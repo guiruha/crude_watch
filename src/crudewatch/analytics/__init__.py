@@ -1,0 +1,106 @@
+"""WTI Calendar Spread Analytics — the fixed-date spread engine.
+
+Phase 1 (foundation) ships the structure universe and the data layer that turns
+the outright price history into fixed-date monthly/quarterly/butterfly series.
+The indicator library, chapter analytics and composite scoring engine are added
+in later phases (see the roadmap in the board proposal).
+"""
+from crudewatch.analytics.data_layer import (
+    PriceMatrix,
+    available_years,
+    build_price_matrix,
+    build_series,
+    seasonal_stack,
+)
+from crudewatch.analytics.regime import (
+    RiskMetrics,
+    StrategyMode,
+    TradeLevels,
+    bollinger_layers,
+    detect_regime,
+    risk_metrics,
+    strategy_mode,
+    trade_levels,
+)
+from crudewatch.analytics.scoring import (
+    CompositeScore,
+    Regime,
+    ScoreContribution,
+    composite_score,
+    reading_for,
+    weight_for,
+)
+from crudewatch.analytics.seasonality import (
+    BUFFER_DAYS,
+    LIFECYCLE_NOTES,
+    MATURITY_BUCKETS,
+    MAX_DAYS_TO_EXPIRY,
+    SEASONAL_DRIVERS,
+    Lifecycle,
+    SeasonalBias,
+    alignment,
+    alignment_backtest,
+    bucket_bounds,
+    buffer_cone,
+    cap_to_year,
+    current_percentile,
+    forward_tendency,
+    lifecycle_phase,
+    monthly_heatmap,
+    seasonal_bias,
+)
+from crudewatch.analytics.structures import (
+    BY_KEY,
+    BY_LEVEL,
+    STRUCTURES,
+    Leg,
+    Level,
+    Structure,
+    structures_for,
+)
+
+__all__ = [
+    "Level",
+    "Leg",
+    "Structure",
+    "STRUCTURES",
+    "BY_KEY",
+    "BY_LEVEL",
+    "structures_for",
+    "PriceMatrix",
+    "build_price_matrix",
+    "build_series",
+    "available_years",
+    "seasonal_stack",
+    "SEASONAL_DRIVERS",
+    "LIFECYCLE_NOTES",
+    "MAX_DAYS_TO_EXPIRY",
+    "BUFFER_DAYS",
+    "MATURITY_BUCKETS",
+    "bucket_bounds",
+    "SeasonalBias",
+    "Lifecycle",
+    "cap_to_year",
+    "buffer_cone",
+    "current_percentile",
+    "monthly_heatmap",
+    "seasonal_bias",
+    "forward_tendency",
+    "alignment",
+    "lifecycle_phase",
+    "alignment_backtest",
+    "Regime",
+    "StrategyMode",
+    "RiskMetrics",
+    "TradeLevels",
+    "detect_regime",
+    "strategy_mode",
+    "bollinger_layers",
+    "risk_metrics",
+    "trade_levels",
+    "CompositeScore",
+    "ScoreContribution",
+    "composite_score",
+    "reading_for",
+    "weight_for",
+]

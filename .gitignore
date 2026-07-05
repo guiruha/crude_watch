@@ -1,0 +1,39 @@
+# Byte-compiled / optimized
+__pycache__/
+*.py[cod]
+*$py.class
+
+# PyInstaller build artifacts (large binaries — never commit)
+build/
+dist/
+*.spec.bak
+*.manifest
+
+# Packaging / editable install metadata
+*.egg-info/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Built datasets / caches
+data/processed/
+*.parquet
+
+# Test / tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+build/
+dist/
+*.parquet

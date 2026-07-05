@@ -1,0 +1,21 @@
+Metadata-Version: 2.4
+Name: crudewatch
+Version: 0.1.0
+Summary: WTI crude futures dataset preparation: outrights, calendar spreads, cracks, synthetic spreads & flies.
+Requires-Python: >=3.10
+Requires-Dist: pandas>=2.0
+Requires-Dist: numpy>=1.24
+Requires-Dist: openpyxl>=3.1
+Provides-Extra: plots
+Requires-Dist: plotly>=5.0; extra == "plots"
+Provides-Extra: parquet
+Requires-Dist: pyarrow>=12.0; extra == "parquet"
+Provides-Extra: stats
+Requires-Dist: scipy>=1.10; extra == "stats"
+Requires-Dist: statsmodels>=0.14; extra == "stats"
+Provides-Extra: app
+Requires-Dist: streamlit>=1.40; extra == "app"
+Requires-Dist: plotly>=5.0; extra == "app"
+Requires-Dist: pyarrow>=12.0; extra == "app"
+Requires-Dist: scipy>=1.10; extra == "app"
+Requires-Dist: statsmodels>=0.14; extra == "app"
