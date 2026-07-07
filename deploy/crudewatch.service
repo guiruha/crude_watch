@@ -1,0 +1,22 @@
+# systemd unit for running CrudeWatch natively on a VM (no Docker).
+# Install:
+#   sudo cp deploy/crudewatch.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now crudewatch
+# Adjust User/WorkingDirectory/paths to match your machine.
+[Unit]
+Description=CrudeWatch Streamlit app
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/crude_watch
+# Bind to localhost only; Tailscale Serve exposes it to the tailnet.
+ExecStart=/home/ubuntu/crude_watch/.venv/bin/streamlit run app/main.py \
+  --server.port=8501 --server.address=127.0.0.1 --server.headless=true \
+  --browser.gatherUsageStats=false
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

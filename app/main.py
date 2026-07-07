@@ -7,9 +7,19 @@ Each screen is a class taking the frames mapping and exposing ``display()``.
 """
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
 import pandas as pd
 import streamlit as st
 
+# Make the ``crudewatch`` package importable when it isn't pip-installed (e.g. on
+# Streamlit Community Cloud, which only installs requirements.txt).
+_SRC = Path(__file__).resolve().parents[1] / "src"
+if _SRC.is_dir() and str(_SRC) not in sys.path:
+    sys.path.insert(0, str(_SRC))
+
+from core.auth import require_login, sidebar_account
 from core.data import load_frames
 from screens.contract_exploration import ContractExplorationScreen
 from screens.spread_analytics import (
@@ -60,6 +70,7 @@ def _dataset_summary(frames: dict[str, pd.DataFrame]) -> dict[str, str]:
 
 
 def main() -> None:
+    require_login()
     frames = load_frames()
 
     with st.sidebar:
@@ -73,6 +84,7 @@ def main() -> None:
         nav_label("Dataset")
         sidebar_card(_dataset_summary(frames))
 
+        sidebar_account()
         sidebar_footer("CrudeWatch \u00b7 v0.1 \u00b7 Data: CME / ICE")
         st.markdown(
             '<div class="cw-side-copy">\u00a9 guiruha</div>',

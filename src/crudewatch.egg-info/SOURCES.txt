@@ -1,3 +1,4 @@
+README.md
 pyproject.toml
 src/crudewatch/__init__.py
 src/crudewatch.egg-info/PKG-INFO
@@ -14,6 +15,7 @@ src/crudewatch/analytics/structures.py
 src/crudewatch/analytics/indicators/__init__.py
 src/crudewatch/analytics/indicators/momentum.py
 src/crudewatch/analytics/indicators/panel.py
+src/crudewatch/analytics/indicators/statistical.py
 src/crudewatch/analytics/indicators/trend.py
 src/crudewatch/analytics/indicators/volatility.py
 src/crudewatch/data_preparation/__init__.py
@@ -30,5 +32,7 @@ src/crudewatch/infra/io.py
 src/crudewatch/plots/__init__.py
 src/crudewatch/plots/style.py
 tests/test_indicators.py
+tests/test_integration.py
 tests/test_regime.py
+tests/test_scoring.py
 tests/test_seasonality.py

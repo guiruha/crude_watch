@@ -1,0 +1,15 @@
+# Runtime dependencies for hosting the CrudeWatch Streamlit app
+# (e.g. Streamlit Community Cloud installs from this file).
+#
+# Mirrors pyproject.toml: [project].dependencies + [project.optional-dependencies].app
+# Keep the two in sync when changing versions.
+streamlit>=1.42
+pandas>=2.0
+numpy>=1.24
+plotly>=5.0
+pyarrow>=12.0
+scipy>=1.10
+statsmodels>=0.14
+openpyxl>=3.1
+Authlib>=1.3.2        # required by Streamlit native OIDC login (st.login)
+httpx>=0.27           # Authlib's starlette client imports httpx at load time

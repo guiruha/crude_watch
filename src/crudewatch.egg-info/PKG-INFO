@@ -14,8 +14,12 @@ Provides-Extra: stats
 Requires-Dist: scipy>=1.10; extra == "stats"
 Requires-Dist: statsmodels>=0.14; extra == "stats"
 Provides-Extra: app
-Requires-Dist: streamlit>=1.40; extra == "app"
+Requires-Dist: streamlit>=1.42; extra == "app"
 Requires-Dist: plotly>=5.0; extra == "app"
 Requires-Dist: pyarrow>=12.0; extra == "app"
 Requires-Dist: scipy>=1.10; extra == "app"
 Requires-Dist: statsmodels>=0.14; extra == "app"
+Requires-Dist: authlib>=1.3.2; extra == "app"
+Requires-Dist: httpx>=0.27; extra == "app"
+Provides-Extra: build
+Requires-Dist: pyinstaller>=6.6; extra == "build"
