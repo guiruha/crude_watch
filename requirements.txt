@@ -1,8 +1,7 @@
 # Runtime dependencies for hosting the CrudeWatch Streamlit app
 # (e.g. Streamlit Community Cloud installs from this file).
 #
-# Mirrors pyproject.toml: [project].dependencies + [project.optional-dependencies].app
-# Keep the two in sync when changing versions.
+# Mirrors pyproject.toml [project].dependencies. Keep the two in sync.
 streamlit>=1.42
 pandas>=2.0
 numpy>=1.24
