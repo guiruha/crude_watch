@@ -1,120 +1,66 @@
-"""Contract Exploration screen: pick a structure and a contract, then chart it."""
-from __future__ import annotations
+"""Contract Exploration screen: chart the globally selected contract's history.
 
-from dataclasses import dataclass
+Family and contract come from the shared top selector (``Selection``); this
+screen shows the full price history of that contract (the date/horizon in the
+selector are ignored here — it is a browse view, not a point-in-time score).
+"""
+from __future__ import annotations
 
 import pandas as pd
 import streamlit as st
 
 from crudewatch.plots import price_volume_figure
 
+from core.selection import Selection
 from theme.palette import CHART_ACCENT, title_block
 
-
-@dataclass(frozen=True)
-class Structure:
-    """One selectable instrument family."""
-    key: str                    # dict key in the frames mapping
-    label: str                  # UI label
-    y_title: str                # chart y-axis label
-    fill: bool                  # area fill to zero (only sensible for outrights)
-    category: str               # grouping shown in the top-level type picker
-    product: str | None = None  # optional row filter on the frame's ``product`` column
-
-
-# Ordered instrument families, grouped by category for the two-tier menu.
-STRUCTURES: list[Structure] = [
-    Structure("outrights", "Outright", "Close ($/bbl)", True, "Outright"),
-    Structure("calendars", "Calendar", "Spread ($/bbl)", False, "Spread"),
-    Structure("quarterly", "Quarterly", "Spread ($/bbl)", False, "Spread"),
-    Structure("semestral", "Semestral", "Spread ($/bbl)", False, "Spread"),
-    Structure("yearly", "Yearly", "Spread ($/bbl)", False, "Spread"),
-    Structure("flies", "Fly", "Fly ($/bbl)", False, "Fly"),
-    Structure("cracks", "HO crack", "Crack ($/bbl)", False, "Inter-commodity", product="HO"),
-    Structure("cracks", "RB crack", "Crack ($/bbl)", False, "Inter-commodity", product="RB"),
-    Structure("brent_wti", "Brent\u2013WTI", "Brent \u2212 WTI ($/bbl)", False, "Inter-commodity"),
-]
-
-# Category -> its structures, preserving the order above.
-CATEGORIES: dict[str, list[Structure]] = {}
-for _s in STRUCTURES:
-    CATEGORIES.setdefault(_s.category, []).append(_s)
+# family key -> (chart label, y-axis title, fill area to zero)
+_CHART_STYLE: dict[str, tuple[str, str, bool]] = {
+    "outrights": ("Outright", "Close ($/bbl)", True),
+    "calendars": ("Calendar", "Spread ($/bbl)", False),
+    "quarterly": ("Quarterly", "Spread ($/bbl)", False),
+    "semestral": ("Semestral", "Spread ($/bbl)", False),
+    "yearly": ("Yearly", "Spread ($/bbl)", False),
+    "flies": ("Fly", "Fly ($/bbl)", False),
+    "cracks": ("Crack", "Crack ($/bbl)", False),
+    "brent_wti": ("Brent\u2013WTI", "Brent \u2212 WTI ($/bbl)", False),
+}
 
 
 class ContractExplorationScreen:
-    """Browse a single contract's price history across every instrument family."""
+    """Browse the full price history of the globally selected contract."""
 
     def __init__(self, frames: dict[str, pd.DataFrame]) -> None:
         self.frames = frames
 
-    def display(self) -> None:
+    def display(self, selection: Selection) -> None:
         title_block(
             "Contract Exploration",
-            "Select an instrument family, then a contract, to explore its price history.",
+            "Historia de precios completa del contrato seleccionado en el menú superior.",
         )
 
-        with st.container(border=True):
-            structure = self._pick_structure()
-            frame = self.frames[structure.key]
-            if structure.product is not None:
-                frame = frame[frame["product"] == structure.product]
-            contract = self._pick_contract(frame)
-
-        if contract is None:
+        if selection.contract is None:
+            st.info("Selecciona una familia y una fecha con contratos activos en el menú superior.")
             return
 
+        family = selection.family
+        contract = selection.contract
+        label, y_title, fill = _CHART_STYLE.get(family, (family.title(), "Precio", False))
+
+        frame = self.frames.get(family)
+        if frame is None or "contract" not in frame:
+            st.warning("No hay datos para esta familia.")
+            return
         series = frame[frame["contract"] == contract].sort_values("date")
-        self._render_stats(series, structure)
-        self._render_chart(series, contract, structure)
+        if series.empty:
+            st.warning("Sin serie de precios para este contrato.")
+            return
+
+        self._render_stats(series)
+        self._render_chart(series, contract, label, y_title, fill)
         self._render_table(series)
 
-    # -- menu ----------------------------------------------------------------
-
-    def _pick_structure(self) -> Structure:
-        """Two-tier picker: instrument type, then the structure within it."""
-        categories = list(CATEGORIES)
-        category = st.segmented_control(
-            "Instrument type",
-            options=categories,
-            default=categories[0],
-            key="cw_category",
-        ) or categories[0]
-
-        members = CATEGORIES[category]
-        if len(members) == 1:
-            return members[0]
-
-        labels = [s.label for s in members]
-        label = st.segmented_control(
-            "Structure",
-            options=labels,
-            default=labels[0],
-            key=f"cw_structure_{category}",
-        ) or labels[0]
-        return next(s for s in members if s.label == label)
-
-    def _pick_contract(self, frame: pd.DataFrame) -> str | None:
-        contracts = sorted(frame["contract"].unique())
-        if not contracts:
-            st.warning("No contracts available for this structure.")
-            return None
-
-        left, right = st.columns([3, 1], vertical_alignment="bottom")
-        with right:
-            query = st.text_input(
-                "Filter contracts",
-                placeholder="e.g. Z2022",
-                help="Type part of a contract code to narrow the list.",
-            )
-        options = [c for c in contracts if query.upper() in c.upper()] if query else contracts
-        if not options:
-            with left:
-                st.info(f"No contracts match '{query}'.")
-            return None
-        with left:
-            return st.selectbox(f"Contract ({len(options)} of {len(contracts)})", options)
-
-    def _render_stats(self, series: pd.DataFrame, structure: Structure) -> None:
+    def _render_stats(self, series: pd.DataFrame) -> None:
         close = series["close"]
         cols = st.columns(6)
         cells = [
@@ -128,12 +74,14 @@ class ContractExplorationScreen:
         for col, (label, value) in zip(cols, cells):
             col.metric(label, value)
 
-    def _render_chart(self, series: pd.DataFrame, contract: str, structure: Structure) -> None:
+    def _render_chart(
+        self, series: pd.DataFrame, contract: str, label: str, y_title: str, fill: bool
+    ) -> None:
         fig = price_volume_figure(
             series,
-            title=f"{structure.label} \u2014 {contract}",
-            y_title=structure.y_title,
-            fill_to_zero=structure.fill,
+            title=f"{label} \u2014 {contract}",
+            y_title=y_title,
+            fill_to_zero=fill,
             color=CHART_ACCENT,
         )
         st.plotly_chart(fig, width="stretch")

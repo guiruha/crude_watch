@@ -58,6 +58,20 @@ SPREAD_STRUCTURES: dict[str, int] = {
 # only a handful of overlapping days. Narrow to ("Z",) for December-only flies.
 FLY_MONTHS: tuple[str, ...] = ("M", "Z")
 
+# Ordered contract families as published by the data pipeline, with display
+# labels. Shared by the Streamlit app (family tabs / labels) and the offline
+# backtesting reports, so it lives with the other pipeline-wide constants.
+FAMILY_LABELS: dict[str, str] = {
+    "outrights": "Outrights",
+    "calendars": "Calendar spreads",
+    "cracks": "Cracks (HO / RB)",
+    "brent_wti": "Brent–WTI",
+    "quarterly": "Quarterly spreads",
+    "semestral": "Semestral spreads",
+    "yearly": "Yearly spreads",
+    "flies": "Butterflies",
+}
+
 # Default filesystem locations (relative to the repo root).
 RAW_DEFAULT = Path("data/raw_files.xlsx")
 PROCESSED_DEFAULT = Path("data/processed")

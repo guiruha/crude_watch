@@ -1,0 +1,161 @@
+family,feature,dimension,group,ic,n
+outrights,level_z,era,<2020,0.02260142606002635,21450
+outrights,level_z,era,≥2020,-0.16120378214586595,21287
+outrights,level_z,vol,vol alta,-0.13130339187890142,10861
+outrights,level_z,vol,vol baja,-0.10865618977085449,15162
+outrights,level_z,vol,vol media,0.12598473684099834,13785
+outrights,level_z,fase,lejana,-0.022750412823603298,13925
+outrights,level_z,fase,media,-0.027619479486065624,16380
+outrights,level_z,fase,próxima,-0.021460088602479693,12432
+outrights,level_z,mes,1,-0.1612920696499155,3593
+outrights,level_z,mes,10,-0.1454806250579008,3677
+outrights,level_z,mes,11,-0.030977090830967276,3530
+outrights,level_z,mes,12,0.2928342506759416,3555
+outrights,level_z,mes,2,0.2879396696900656,3283
+outrights,level_z,mes,3,-0.00594392757218041,3642
+outrights,level_z,mes,4,-0.1419093786561466,3432
+outrights,level_z,mes,5,0.003931320102888556,3702
+outrights,level_z,mes,6,0.06632006282836095,3561
+outrights,level_z,mes,7,0.0587078054112625,3639
+outrights,level_z,mes,8,-0.13740553244811274,3644
+outrights,level_z,mes,9,-0.2133965275048679,3479
+calendars,level_z,era,<2020,0.03931639826159266,91365
+calendars,level_z,era,≥2020,-0.12717919228565172,138747
+calendars,level_z,vol,vol alta,-0.15249326307141917,55999
+calendars,level_z,vol,vol baja,0.03616681601795282,75071
+calendars,level_z,vol,vol media,0.012207360223689467,69265
+calendars,level_z,fase,lejana,-0.07759455310531152,85118
+calendars,level_z,fase,media,-0.026582266926400325,95682
+calendars,level_z,fase,próxima,-0.07268463466970898,49312
+calendars,level_z,mes,1,-0.010692656477578166,20228
+calendars,level_z,mes,10,-0.18412460647898196,19847
+calendars,level_z,mes,11,-0.13419306815345042,19589
+calendars,level_z,mes,12,0.2959745046925913,19926
+calendars,level_z,mes,2,0.0333681461941445,18623
+calendars,level_z,mes,3,-0.05407822805916461,20283
+calendars,level_z,mes,4,-0.05713087159283723,18980
+calendars,level_z,mes,5,-0.24026059920628445,19750
+calendars,level_z,mes,6,-0.059632386756892836,18471
+calendars,level_z,mes,7,-0.3861871198644178,17958
+calendars,level_z,mes,8,0.23933095228509413,18260
+calendars,level_z,mes,9,-0.00923254317702874,18197
+cracks,level_z,era,<2020,-0.18109229827741394,10573
+cracks,level_z,era,≥2020,-0.05455131912015601,15822
+cracks,level_z,vol,vol alta,-0.07952518820931312,5992
+cracks,level_z,vol,vol baja,-0.076196205330045,9314
+cracks,level_z,vol,vol media,-0.019029223357458026,6873
+cracks,level_z,fase,lejana,-0.048718013704240296,10189
+cracks,level_z,fase,media,-0.03527040973190416,11493
+cracks,level_z,fase,próxima,-0.06726595787323505,4713
+cracks,level_z,mes,1,0.05210558742902341,2455
+cracks,level_z,mes,10,-0.15542491164416966,2209
+cracks,level_z,mes,11,-0.4107422691132569,2280
+cracks,level_z,mes,12,0.20992550188192807,2381
+cracks,level_z,mes,2,0.030680401924300882,2275
+cracks,level_z,mes,3,0.11274575312658075,2546
+cracks,level_z,mes,4,0.07381576448144071,2256
+cracks,level_z,mes,5,-0.004356718569528182,2298
+cracks,level_z,mes,6,-0.17958461564227488,2064
+cracks,level_z,mes,7,-0.048255809257965125,1904
+cracks,level_z,mes,8,-0.20228873021419488,1854
+cracks,level_z,mes,9,-0.12952222854880197,1873
+brent_wti,level_pct,era,<2020,-0.19786751435185645,6372
+brent_wti,level_pct,era,≥2020,-0.10295015944903345,16489
+brent_wti,level_pct,vol,vol alta,-0.18901996755021738,3599
+brent_wti,level_pct,vol,vol baja,-0.19126810855810875,9246
+brent_wti,level_pct,vol,vol media,-0.08461350282874845,6288
+brent_wti,level_pct,fase,lejana,-0.11607821316084144,8872
+brent_wti,level_pct,fase,media,-0.163022460425018,10647
+brent_wti,level_pct,fase,próxima,-0.16805563919260683,3342
+brent_wti,level_pct,mes,1,-0.02732443367637452,2041
+brent_wti,level_pct,mes,10,0.01977426201120088,1873
+brent_wti,level_pct,mes,11,-0.4900106064572863,1922
+brent_wti,level_pct,mes,12,-0.08369983186616266,1820
+brent_wti,level_pct,mes,2,-0.23574948897128828,1769
+brent_wti,level_pct,mes,3,-0.16363996235016895,2007
+brent_wti,level_pct,mes,4,-0.005929115274673145,1921
+brent_wti,level_pct,mes,5,-0.1861108486778452,2171
+brent_wti,level_pct,mes,6,-0.4233556032156764,1922
+brent_wti,level_pct,mes,7,-0.39240954459779526,1851
+brent_wti,level_pct,mes,8,-0.10365080326885527,1778
+brent_wti,level_pct,mes,9,0.29245660190466644,1786
+quarterly,level_z,era,<2020,0.021769068711092087,18809
+quarterly,level_z,era,≥2020,-0.1299014736091837,18607
+quarterly,level_z,vol,vol alta,-0.09835272838344207,10056
+quarterly,level_z,vol,vol baja,0.0418377025368509,12634
+quarterly,level_z,vol,vol media,-0.03292577542691308,11765
+quarterly,level_z,fase,lejana,-0.025140118368991285,12845
+quarterly,level_z,fase,media,-0.01972467098008831,14193
+quarterly,level_z,fase,próxima,-0.06832186424350294,10378
+quarterly,level_z,mes,1,0.18134608405224248,3031
+quarterly,level_z,mes,10,-0.26994854359872167,3325
+quarterly,level_z,mes,11,-0.01811419225686368,3060
+quarterly,level_z,mes,12,0.26913933475517754,3035
+quarterly,level_z,mes,2,0.011793161093185713,2813
+quarterly,level_z,mes,3,-0.200884304787806,3251
+quarterly,level_z,mes,4,-0.050154991848272205,3102
+quarterly,level_z,mes,5,-0.17735664092212972,3261
+quarterly,level_z,mes,6,0.13380117657256102,3110
+quarterly,level_z,mes,7,-0.10284833152358601,3116
+quarterly,level_z,mes,8,0.033446867793602765,3181
+quarterly,level_z,mes,9,-0.15269061466028225,3131
+semestral,level_z,era,<2020,0.04266110796527113,16054
+semestral,level_z,era,≥2020,-0.1469793058806371,15177
+semestral,level_z,vol,vol alta,-0.07624041839129686,8757
+semestral,level_z,vol,vol baja,0.028700527801343658,10212
+semestral,level_z,vol,vol media,-0.0100049548298152,9241
+semestral,level_z,fase,lejana,-0.018249208691257002,10188
+semestral,level_z,fase,media,-0.020474491900880635,12345
+semestral,level_z,fase,próxima,-0.04690219161334079,8698
+semestral,level_z,mes,1,0.18985182165135786,2550
+semestral,level_z,mes,10,-0.2647507944417924,2699
+semestral,level_z,mes,11,0.07944700574353965,2467
+semestral,level_z,mes,12,0.2902769477446731,2512
+semestral,level_z,mes,2,0.01907547158772315,2381
+semestral,level_z,mes,3,-0.2004773293443769,2660
+semestral,level_z,mes,4,-0.08057775603306766,2619
+semestral,level_z,mes,5,-0.17620489585775131,2719
+semestral,level_z,mes,6,0.0996741589450429,2724
+semestral,level_z,mes,7,-0.033642196301037396,2714
+semestral,level_z,mes,8,0.05180441313716228,2650
+semestral,level_z,mes,9,-0.20718352676637286,2536
+yearly,level_z,era,<2020,0.038696303002224444,9590
+yearly,level_z,era,≥2020,-0.18617337905300768,7149
+yearly,level_z,vol,vol alta,-0.022861894001130447,3568
+yearly,level_z,vol,vol baja,-0.05824227357606606,5956
+yearly,level_z,vol,vol media,0.02541489323671801,4428
+yearly,level_z,fase,lejana,0.0078091220351943855,6000
+yearly,level_z,fase,media,-0.012101238792703735,6902
+yearly,level_z,fase,próxima,-0.051532499771105834,3837
+yearly,level_z,mes,1,0.13143008262668168,1351
+yearly,level_z,mes,10,-0.1736538970254581,1496
+yearly,level_z,mes,11,0.36882961786669527,1154
+yearly,level_z,mes,12,0.2591302217821621,1303
+yearly,level_z,mes,2,0.032126238714309585,1354
+yearly,level_z,mes,3,-0.18666687155828207,1519
+yearly,level_z,mes,4,-0.17831461648239733,1511
+yearly,level_z,mes,5,-0.17680742525870027,1353
+yearly,level_z,mes,6,0.1370007466253888,1516
+yearly,level_z,mes,7,0.18476618013358892,1438
+yearly,level_z,mes,8,-0.05995010835567459,1385
+yearly,level_z,mes,9,-0.36493070118188115,1359
+flies,level_z,era,<2020,-0.020132315931774128,2858
+flies,level_z,era,≥2020,-0.1432785848563837,3000
+flies,level_z,vol,vol alta,-0.12834699539348482,1542
+flies,level_z,vol,vol baja,0.0034668767445913597,2214
+flies,level_z,vol,vol media,-0.07958516995845222,1603
+flies,level_z,fase,lejana,-0.021711172333883536,1832
+flies,level_z,fase,media,-0.045642797615298665,2331
+flies,level_z,fase,próxima,-0.10361094740277611,1695
+flies,level_z,mes,1,0.24132397336141362,552
+flies,level_z,mes,10,-0.19777778203265528,447
+flies,level_z,mes,11,0.09960713267916045,356
+flies,level_z,mes,12,0.16017928817971933,536
+flies,level_z,mes,2,0.018925188102359162,532
+flies,level_z,mes,3,-0.3524756309476836,609
+flies,level_z,mes,4,-0.08435700817485484,460
+flies,level_z,mes,5,-0.2896477753826219,355
+flies,level_z,mes,6,-0.06211729871594085,467
+flies,level_z,mes,7,-0.04880560951273036,502
+flies,level_z,mes,8,0.06362945092807254,516
+flies,level_z,mes,9,-0.15714907114790408,526

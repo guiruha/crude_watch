@@ -43,6 +43,41 @@ def inject_css() -> None:
     st.markdown(
         f"""
         <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+        /* Load the icon font with display=block so its ligature text ("keyboard_…")
+           stays invisible until the glyph is ready — kills the raw-text flash. */
+        @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block');
+
+        :root {{
+            --cw-font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --cw-font-display: 'Space Grotesk', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }}
+        /* Body typeface everywhere; display typeface for titles + numeric readouts. */
+        html, body, .stApp, [class^="st-"], [class*=" st-"],
+        button, input, select, textarea,
+        div[data-testid="stMarkdownContainer"] {{
+            font-family: var(--cw-font-body) !important;
+        }}
+        h1, h2, h3, h4, h5, h6,
+        div[data-testid="stMarkdownContainer"] h1, div[data-testid="stMarkdownContainer"] h2,
+        div[data-testid="stMarkdownContainer"] h3, div[data-testid="stMarkdownContainer"] h4,
+        div[data-testid="stMarkdownContainer"] h5,
+        .cw-title, .cw-side-word, .cw-brand, .cw-fc-val, .cw-fc-label,
+        div[data-testid="stMetricValue"] {{
+            font-family: var(--cw-font-display) !important;
+        }}
+        /* Tabular figures so digits align in cards, tables and metrics. */
+        .cw-fc-val, .cw-fc-ends, .cw-ftab .v, .cw-ftab .pct .num,
+        div[data-testid="stMetricValue"] {{
+            font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1;
+        }}
+        /* CRITICAL: never let the body font win over the Material Symbols icon
+           font — otherwise ligature glyphs render as raw text ("keyboard_arrow…"
+           and overlap). Higher specificity + !important beats the base override. */
+        span[data-testid="stIconMaterial"] {{
+            font-family: 'Material Symbols Rounded' !important;
+        }}
+
         /* Keep the top bar minimal but preserve the sidebar toggle ("menu" icon):
            the header is where Streamlit renders the collapse/expand control, so we
            only strip the rainbow decoration + toolbar instead of hiding it all. */
@@ -83,9 +118,29 @@ def inject_css() -> None:
             fill: {ACCENT} !important;
             pointer-events: auto !important;
         }}
+        /* Bulletproof toggle glyphs: some environments briefly (or persistently)
+           fail to swap the Material ligature "keyboard_double_arrow_*" into its
+           icon glyph, leaving raw text. Hide the ligature text entirely and draw
+           the chevron with a plain Unicode character in the body font, so the
+           toggle never depends on the icon font loading. */
         [data-testid="stSidebarCollapseButton"] span[data-testid="stIconMaterial"],
         [data-testid="stExpandSidebarButton"] span[data-testid="stIconMaterial"] {{
-            font-size: 1.7rem !important;
+            font-size: 0 !important;
+            line-height: 1 !important;
+        }}
+        [data-testid="stSidebarCollapseButton"] span[data-testid="stIconMaterial"]::after,
+        [data-testid="stExpandSidebarButton"] span[data-testid="stIconMaterial"]::after {{
+            font-family: var(--cw-font-body) !important;
+            font-size: 1.6rem !important;
+            font-weight: 700 !important;
+            line-height: 1 !important;
+            color: {ACCENT} !important;
+        }}
+        [data-testid="stSidebarCollapseButton"] span[data-testid="stIconMaterial"]::after {{
+            content: "\\00AB"; /* « collapse */
+        }}
+        [data-testid="stExpandSidebarButton"] span[data-testid="stIconMaterial"]::after {{
+            content: "\\00BB"; /* » expand */
         }}
 
         /* Nudge the whole app's type scale up a touch (rem-based widgets follow). */
@@ -209,6 +264,7 @@ def inject_css() -> None:
             letter-spacing: .8px; text-transform: uppercase;
         }}
         .cw-sig .bias {{ font-size: 20px; font-weight: 800; margin-top: 3px; }}
+        .cw-sig .bias .cw-sig-ico {{ font-size: 13px; margin-right: 7px; vertical-align: .1em; }}
         .cw-sig .conv {{ color: {SUBTEXT}; font-size: 12.5px; margin-top: 2px; }}
         .cw-sig.bull {{ border-left-color: {BULL}; }}
         .cw-sig.bull .bias {{ color: {BULL}; }}
@@ -315,6 +371,228 @@ def inject_css() -> None:
             font-size: 20px !important;
         }}
 
+        /* Global top selection bar — matched to the sidebar surface for a
+           cohesive, professional look (charcoal gradient, hairline border,
+           emerald left-accent like the active nav item, uppercase micro-labels). */
+        .st-key-cw_topbar {{
+            background: linear-gradient(180deg, {SURFACE} 0%, {BACKGROUND} 100%);
+            border: 1px solid {BORDER};
+            border-radius: 14px;
+            padding: 12px 18px 15px 18px;
+            margin: 0 0 20px 0;
+            box-shadow: inset 3px 0 0 0 {ACCENT}, 0 12px 30px -22px {ACCENT};
+        }}
+        .cw-topbar-head {{
+            display: flex; align-items: center; gap: 9px;
+            color: {SUBTEXT}; font-size: 13px; font-weight: 700;
+            letter-spacing: 1.4px; text-transform: uppercase;
+            margin: 0 0 10px 2px;
+        }}
+        .cw-topbar-head span {{
+            width: 8px; height: 8px; border-radius: 50%;
+            background: {ACCENT}; box-shadow: 0 0 0 3px {ACCENT}22;
+        }}
+        /* Field labels: uppercase micro-labels like the sidebar nav labels. */
+        .st-key-cw_topbar label[data-testid="stWidgetLabel"] p {{
+            color: {SUBTEXT} !important; text-transform: uppercase;
+            letter-spacing: .8px; font-size: 11.5px !important; font-weight: 700;
+        }}
+        /* Select + date controls: elevated surface, hairline border, emerald focus. */
+        .st-key-cw_topbar div[data-baseweb="select"] > div,
+        .st-key-cw_topbar div[data-testid="stDateInput"] div[data-baseweb="input"] {{
+            background: {SURFACE_2} !important;
+            border-color: {BORDER} !important;
+            border-radius: 9px !important;
+        }}
+        .st-key-cw_topbar div[data-baseweb="select"] > div:hover,
+        .st-key-cw_topbar div[data-testid="stDateInput"] div[data-baseweb="input"]:hover {{
+            border-color: {ACCENT}66 !important;
+        }}
+        .st-key-cw_topbar div[data-testid="stDateInput"] input {{
+            background: transparent !important;
+        }}
+
+        /* Block intro panel — the block's explanation as a carded info note. */
+        .cw-intro {{
+            display: flex; gap: 13px; align-items: flex-start;
+            background: {SURFACE}; border: 1px solid {BORDER};
+            border-left: 4px solid {ACCENT}; border-radius: 14px;
+            padding: 15px 20px; margin: 2px 0 18px;
+        }}
+        .cw-intro .ico {{ color: {ACCENT}; flex: none; line-height: 0; margin-top: 3px; }}
+        .cw-intro .ico svg {{ width: 20px; height: 20px; }}
+        .cw-intro .txt {{ color: {SUBTEXT}; font-size: 15.5px; line-height: 1.62; flex: 1; }}
+        .cw-intro .txt p {{ margin: 0 0 11px; }}
+        .cw-intro .txt p:last-child {{ margin-bottom: 0; }}
+        .cw-intro .txt b {{ color: {TEXT}; font-weight: 700; }}
+        .cw-intro .txt i {{ color: {TEXT}; font-style: italic; }}
+        /* "Cómo leerlo" footer: a quieter, accented practical-reading strip. */
+        .cw-intro-read {{
+            margin-top: 13px; padding-top: 12px; border-top: 1px dashed {BORDER};
+            font-size: 14.5px; line-height: 1.6; color: {SUBTEXT};
+        }}
+        .cw-intro-read .lbl {{
+            display: inline-block; margin-right: 9px; padding: 2px 10px;
+            border-radius: 999px; background: {ACCENT}22; color: {ACCENT};
+            font-size: 11.5px; font-weight: 800; letter-spacing: .6px;
+            text-transform: uppercase; vertical-align: 1px;
+        }}
+        .cw-intro-read b {{ color: {TEXT}; font-weight: 700; }}
+        .cw-intro-read i {{ color: {TEXT}; font-style: italic; }}
+
+        /* Metric context readout — larger, carded, with the key figures in bold. */
+        .cw-mctx {{
+            background: linear-gradient(180deg, {SURFACE} 0%, {BACKGROUND} 100%);
+            border: 1px solid {BORDER}; border-left: 4px solid {ACCENT};
+            border-radius: 14px; padding: 15px 20px 16px; margin: 4px 0 12px;
+        }}
+        .cw-mctx-line {{ font-size: 18px; color: {TEXT}; margin: 4px 0; letter-spacing: .1px; }}
+        .cw-mctx-line .k {{ color: {SUBTEXT}; font-weight: 600; }}
+        .cw-mctx-line b {{ font-weight: 800; color: {TEXT}; font-variant-numeric: tabular-nums; }}
+        .cw-mctx-tag {{ color: {ACCENT}; font-weight: 700; }}
+        .cw-mctx-bar {{
+            position: relative; display: inline-block; vertical-align: middle;
+            width: 120px; height: 7px; margin: 0 2px; border-radius: 5px;
+            background: {BACKGROUND}; border: 1px solid {BORDER}; overflow: hidden;
+        }}
+        .cw-mctx-bar > span {{
+            position: absolute; left: 0; top: 0; bottom: 0;
+            background: {ACCENT}; border-radius: 5px;
+        }}
+        .cw-mctx-desc {{
+            color: {SUBTEXT}; font-size: 14px; margin-top: 12px;
+            border-top: 1px solid {BORDER}; padding-top: 11px;
+        }}
+        .cw-mctx-desc b {{ color: {TEXT}; }}
+
+        /* Score flashcard — visual headline for a block (big value + tag + gauge). */
+        .cw-fc {{
+            background: linear-gradient(180deg, {SURFACE} 0%, {BACKGROUND} 100%);
+            border: 1px solid {BORDER}; border-left: 4px solid {ACCENT};
+            border-radius: 16px; padding: 18px 22px 20px; margin: 2px 0 16px;
+        }}
+        .cw-fc-top {{
+            display: flex; align-items: center; justify-content: space-between; gap: 12px;
+        }}
+        .cw-fc-label {{
+            color: {SUBTEXT}; font-size: 12px; font-weight: 700;
+            letter-spacing: 1.3px; text-transform: uppercase;
+        }}
+        .cw-fc-tag {{
+            font-size: 13px; font-weight: 700; border: 1px solid {BORDER};
+            border-radius: 999px; padding: 3px 13px; white-space: nowrap;
+        }}
+        .cw-fc-ico {{ margin-right: 6px; font-size: 11px; vertical-align: .04em; }}
+        .cw-fc-val {{
+            font-size: 48px; font-weight: 800; line-height: 1.02;
+            margin: 8px 0 16px; font-variant-numeric: tabular-nums;
+        }}
+        .cw-fc-track {{
+            position: relative; height: 10px; border-radius: 6px;
+            background: {BACKGROUND}; border: 1px solid {BORDER};
+        }}
+        .cw-fc-fill {{
+            position: absolute; top: 0; bottom: 0; border-radius: 6px; opacity: .9;
+        }}
+        .cw-fc-mid {{
+            position: absolute; top: -4px; bottom: -4px; width: 2px;
+            background: {SUBTEXT}; opacity: .7; transform: translateX(-1px); z-index: 2;
+        }}
+        .cw-fc-dot {{
+            position: absolute; top: 50%; width: 15px; height: 15px; border-radius: 50%;
+            transform: translate(-50%, -50%); box-shadow: 0 0 0 3px {BACKGROUND}; z-index: 3;
+        }}
+        .cw-fc-ends {{
+            display: flex; justify-content: space-between; margin-top: 8px;
+            color: {SUBTEXT}; font-size: 11.5px; letter-spacing: .3px;
+        }}
+
+        /* Feature table — bespoke card (native st.dataframe can't be themed:
+           its grid is canvas-rendered and its ProgressColumn uses the default
+           red primary). This matches the palette: hairline rows, emerald
+           percentile bars, muted descriptions. */
+        .cw-ftab-wrap {{
+            border: 1px solid {BORDER}; border-radius: 12px; overflow: hidden;
+            background: {SURFACE}; margin: 6px 0 4px;
+        }}
+        .cw-ftab {{ width: 100%; border-collapse: collapse; font-size: 14px; }}
+        .cw-ftab thead th {{
+            text-align: left; color: {SUBTEXT}; font-size: 11px; font-weight: 700;
+            letter-spacing: .6px; text-transform: uppercase; padding: 10px 14px;
+            background: {SURFACE_2}; border-bottom: 1px solid {BORDER};
+        }}
+        .cw-ftab tbody td {{
+            padding: 11px 14px; border-bottom: 1px solid {BORDER}; vertical-align: middle;
+        }}
+        .cw-ftab tbody tr:last-child td {{ border-bottom: none; }}
+        .cw-ftab tbody tr:hover td {{ background: {SURFACE_2}; }}
+        .cw-ftab .m {{ color: {TEXT}; font-weight: 600; white-space: nowrap; }}
+        .cw-ftab .m .info {{
+            color: {SUBTEXT}; cursor: help; margin-left: 7px;
+            display: inline-flex; vertical-align: -0.12em;
+        }}
+        .cw-ftab .m .info:hover {{ color: {ACCENT}; }}
+        .cw-ftab .m .info svg {{ width: 15px; height: 15px; }}
+        .cw-ftab .v {{
+            color: {TEXT}; font-variant-numeric: tabular-nums;
+            text-align: right; white-space: nowrap;
+        }}
+        .cw-ftab .r {{ color: {TEXT}; }}
+        .cw-ftab .f {{ color: {SUBTEXT}; }}
+        .cw-ftab .d {{ color: {SUBTEXT}; font-size: 12.5px; }}
+        .cw-ftab .pct {{ display: flex; align-items: center; gap: 9px; min-width: 130px; }}
+        .cw-ftab .pct .track {{
+            position: relative; flex: 1; height: 8px; border-radius: 5px;
+            background: {BACKGROUND}; border: 1px solid {BORDER}; overflow: hidden;
+        }}
+        .cw-ftab .pct .fill {{
+            position: absolute; left: 0; top: 0; bottom: 0;
+            background: {ACCENT}; border-radius: 5px;
+        }}
+        .cw-ftab .pct .num {{
+            color: {TEXT}; font-variant-numeric: tabular-nums;
+            width: 26px; text-align: right; font-size: 13px;
+        }}
+
+        /* Metric context sub-menu (pills): a menu *panel* (same charcoal gradient
+           + hairline border as the top selection bar / sidebar) holding enlarged,
+           title-like tabs with a filled surface and emerald active state. */
+        div[class*="st-key-ctxsel_"] {{
+            background: linear-gradient(180deg, {SURFACE} 0%, {BACKGROUND} 100%);
+            border: 1px solid {BORDER};
+            border-radius: 14px;
+            padding: 12px 16px;
+            margin: 4px 0 12px;
+        }}
+        div[class*="st-key-ctxsel_"] button[data-testid^="stBaseButton-pills"] {{
+            padding: 8px 15px !important;
+            border-radius: 10px !important;
+            background: {SURFACE_2} !important;
+            border-color: {BORDER} !important;
+        }}
+        div[class*="st-key-ctxsel_"] button[data-testid^="stBaseButton-pills"]:hover {{
+            border-color: {ACCENT}66 !important;
+        }}
+        div[class*="st-key-ctxsel_"] button[data-testid^="stBaseButton-pills"] p,
+        div[class*="st-key-ctxsel_"] button[data-testid^="stBaseButton-pills"] div {{
+            font-size: 16px !important; font-weight: 700 !important; letter-spacing: .2px;
+        }}
+        div[class*="st-key-ctxsel_"] button[data-testid^="stBaseButton-pills"]
+            span[data-testid="stIconMaterial"] {{
+            font-size: 15px !important;
+        }}
+        div[class*="st-key-ctxsel_"] button[data-testid="stBaseButton-pillsActive"] {{
+            background: {SURFACE_2} !important;
+            border-color: {ACCENT} !important;
+            box-shadow: inset 0 0 0 1px {ACCENT}, 0 8px 22px -18px {ACCENT};
+        }}
+        div[class*="st-key-ctxsel_"] button[data-testid="stBaseButton-pillsActive"] p,
+        div[class*="st-key-ctxsel_"] button[data-testid="stBaseButton-pillsActive"] div,
+        div[class*="st-key-ctxsel_"] button[data-testid="stBaseButton-pillsActive"]
+            span[data-testid="stIconMaterial"] {{
+            color: {ACCENT} !important;
+        }}
+
         /* Headings accent rule */
         .cw-title {{
             color: {TEXT}; font-size: 32px; font-weight: 700;
@@ -332,9 +610,23 @@ def inject_css() -> None:
     )
 
 
-def title_block(title: str, subtitle: str = "") -> None:
-    """Render a page title with the emerald accent rule and optional subtitle."""
-    st.markdown(f'<div class="cw-title">{title}</div>', unsafe_allow_html=True)
+INFO_MARK_SVG = (
+    '<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" '
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+    '<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/>'
+    '<line x1="12" y1="8" x2="12.01" y2="8"/></svg>'
+)
+
+
+def title_block(title: str, subtitle: str = "", icon: str | None = None) -> None:
+    """Render a page title with the emerald accent rule and optional subtitle/icon."""
+    ico = (
+        f'<span style="display:inline-flex;align-items:center;color:{ACCENT};'
+        f'margin-right:10px;vertical-align:-0.06em;">{icon}</span>'
+        if icon
+        else ""
+    )
+    st.markdown(f'<div class="cw-title">{ico}{title}</div>', unsafe_allow_html=True)
     if subtitle:
         st.markdown(f'<div class="cw-sub">{subtitle}</div>', unsafe_allow_html=True)
 
@@ -372,13 +664,18 @@ def nav_label(text: str) -> None:
 
 
 def signal_chip(family: str, bias_label: str, conviction: float, tone: str) -> None:
-    """Render one traffic-light chip; ``tone`` is 'bull' | 'bear' | 'flat'."""
+    """Render one traffic-light chip; ``tone`` is 'bull' | 'bear' | 'flat'.
+
+    A leading glyph (▲/▼/■) encodes the bias redundantly with colour so the chip
+    is readable in grayscale / for colour-vision deficiency (WCAG 1.4.1).
+    """
     conv = f"{conviction:.0%} agreement" if conviction > 0 else "—"
+    glyph = {"bull": "▲", "bear": "▼"}.get(tone, "■")
     st.markdown(
         f"""
         <div class="cw-sig {tone}">
             <div class="fam">{family}</div>
-            <div class="bias">{bias_label}</div>
+            <div class="bias"><span class="cw-sig-ico">{glyph}</span>{bias_label}</div>
             <div class="conv">{conv}</div>
         </div>
         """,

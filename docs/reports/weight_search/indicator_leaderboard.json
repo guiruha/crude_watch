@@ -1,0 +1,1618 @@
+{
+  "flies": {
+    "cost": 0.02,
+    "n_contracts": 36,
+    "n_days": 8465,
+    "rows": [
+      {
+        "block": "baseline",
+        "terms": [
+          "equal-weight (8 core)"
+        ],
+        "sharpe": 0.3559,
+        "total_pnl": 15.25,
+        "ann_pnl": 0.453987
+      },
+      {
+        "block": "range",
+        "terms": [
+          "rev_term"
+        ],
+        "sharpe": 0.2548,
+        "total_pnl": 8.45,
+        "ann_pnl": 0.251553
+      },
+      {
+        "block": "range",
+        "terms": [
+          "lvl_term"
+        ],
+        "sharpe": 0.1008,
+        "total_pnl": 10.98,
+        "ann_pnl": 0.326871
+      },
+      {
+        "block": "range",
+        "terms": [
+          "timing_term"
+        ],
+        "sharpe": 0.0934,
+        "total_pnl": 17.43,
+        "ann_pnl": 0.518885
+      },
+      {
+        "block": "range",
+        "terms": [
+          "vol_term"
+        ],
+        "sharpe": -0.0722,
+        "total_pnl": -11.54,
+        "ann_pnl": -0.343542
+      },
+      {
+        "block": "range",
+        "terms": [
+          "macd_div_term"
+        ],
+        "sharpe": -0.017,
+        "total_pnl": -1.99,
+        "ann_pnl": -0.059242
+      },
+      {
+        "block": "range",
+        "terms": [
+          "rsi_div_term"
+        ],
+        "sharpe": -0.0143,
+        "total_pnl": -1.08,
+        "ann_pnl": -0.032151
+      },
+      {
+        "block": "range",
+        "terms": [
+          "mom_decel_term"
+        ],
+        "sharpe": 0.0934,
+        "total_pnl": 17.43,
+        "ann_pnl": 0.518885
+      },
+      {
+        "block": "range",
+        "terms": [
+          "er_drop_term"
+        ],
+        "sharpe": -0.0624,
+        "total_pnl": -13.36,
+        "ann_pnl": -0.397722
+      },
+      {
+        "block": "range",
+        "terms": [
+          "autocorr_term"
+        ],
+        "sharpe": -0.0082,
+        "total_pnl": -1.55,
+        "ann_pnl": -0.046143
+      },
+      {
+        "block": "range",
+        "terms": [
+          "rev_term",
+          "lvl_term"
+        ],
+        "sharpe": 0.2787,
+        "total_pnl": 9.35,
+        "ann_pnl": 0.278346
+      },
+      {
+        "block": "range",
+        "terms": [
+          "rev_term",
+          "timing_term"
+        ],
+        "sharpe": 0.201,
+        "total_pnl": 10.64,
+        "ann_pnl": 0.316749
+      },
+      {
+        "block": "range",
+        "terms": [
+          "rev_term",
+          "vol_term"
+        ],
+        "sharpe": 0.2593,
+        "total_pnl": 8.64,
+        "ann_pnl": 0.25721
+      },
+      {
+        "block": "range",
+        "terms": [
+          "rev_term",
+          "macd_div_term"
+        ],
+        "sharpe": 0.2329,
+        "total_pnl": 9.5,
+        "ann_pnl": 0.282812
+      },
+      {
+        "block": "range",
+        "terms": [
+          "rev_term",
+          "rsi_div_term"
+        ],
+        "sharpe": 0.2522,
+        "total_pnl": 8.37,
+        "ann_pnl": 0.249172
+      },
+      {
+        "block": "range",
+        "terms": [
+          "rev_term",
+          "mom_decel_term"
+        ],
+        "sharpe": 0.201,
+        "total_pnl": 10.64,
+        "ann_pnl": 0.316749
+      },
+      {
+        "block": "range",
+        "terms": [
+          "rev_term",
+          "er_drop_term"
+        ],
+        "sharpe": 0.228,
+        "total_pnl": 12.07,
+        "ann_pnl": 0.35932
+      },
+      {
+        "block": "range",
+        "terms": [
+          "rev_term",
+          "autocorr_term"
+        ],
+        "sharpe": 0.2617,
+        "total_pnl": 12.32,
+        "ann_pnl": 0.366762
+      },
+      {
+        "block": "range",
+        "terms": [
+          "lvl_term",
+          "timing_term"
+        ],
+        "sharpe": 0.3292,
+        "total_pnl": 41.94,
+        "ann_pnl": 1.248539
+      },
+      {
+        "block": "range",
+        "terms": [
+          "lvl_term",
+          "vol_term"
+        ],
+        "sharpe": -0.0021,
+        "total_pnl": -0.2,
+        "ann_pnl": -0.005954
+      },
+      {
+        "block": "range",
+        "terms": [
+          "lvl_term",
+          "macd_div_term"
+        ],
+        "sharpe": 0.0899,
+        "total_pnl": 9.04,
+        "ann_pnl": 0.269118
+      },
+      {
+        "block": "range",
+        "terms": [
+          "lvl_term",
+          "rsi_div_term"
+        ],
+        "sharpe": 0.235,
+        "total_pnl": 13.32,
+        "ann_pnl": 0.396532
+      },
+      {
+        "block": "range",
+        "terms": [
+          "lvl_term",
+          "mom_decel_term"
+        ],
+        "sharpe": 0.3292,
+        "total_pnl": 41.94,
+        "ann_pnl": 1.248539
+      },
+      {
+        "block": "range",
+        "terms": [
+          "lvl_term",
+          "er_drop_term"
+        ],
+        "sharpe": 0.0443,
+        "total_pnl": 7.11,
+        "ann_pnl": 0.211662
+      },
+      {
+        "block": "range",
+        "terms": [
+          "lvl_term",
+          "autocorr_term"
+        ],
+        "sharpe": 0.1858,
+        "total_pnl": 26.35,
+        "ann_pnl": 0.78443
+      },
+      {
+        "block": "range",
+        "terms": [
+          "timing_term",
+          "vol_term"
+        ],
+        "sharpe": 0.1056,
+        "total_pnl": 15.3,
+        "ann_pnl": 0.455475
+      },
+      {
+        "block": "range",
+        "terms": [
+          "timing_term",
+          "macd_div_term"
+        ],
+        "sharpe": 0.0541,
+        "total_pnl": 6.17,
+        "ann_pnl": 0.183679
+      },
+      {
+        "block": "range",
+        "terms": [
+          "timing_term",
+          "rsi_div_term"
+        ],
+        "sharpe": 0.1169,
+        "total_pnl": 10.21,
+        "ann_pnl": 0.303948
+      },
+      {
+        "block": "range",
+        "terms": [
+          "timing_term",
+          "mom_decel_term"
+        ],
+        "sharpe": 0.0934,
+        "total_pnl": 17.43,
+        "ann_pnl": 0.518885
+      },
+      {
+        "block": "range",
+        "terms": [
+          "timing_term",
+          "er_drop_term"
+        ],
+        "sharpe": -0.0017,
+        "total_pnl": -0.35,
+        "ann_pnl": -0.010419
+      },
+      {
+        "block": "range",
+        "terms": [
+          "timing_term",
+          "autocorr_term"
+        ],
+        "sharpe": 0.1132,
+        "total_pnl": 21.7,
+        "ann_pnl": 0.646001
+      },
+      {
+        "block": "range",
+        "terms": [
+          "vol_term",
+          "macd_div_term"
+        ],
+        "sharpe": 0.0311,
+        "total_pnl": 2.54,
+        "ann_pnl": 0.075615
+      },
+      {
+        "block": "range",
+        "terms": [
+          "vol_term",
+          "rsi_div_term"
+        ],
+        "sharpe": -0.1024,
+        "total_pnl": -5.43,
+        "ann_pnl": -0.161649
+      },
+      {
+        "block": "range",
+        "terms": [
+          "vol_term",
+          "mom_decel_term"
+        ],
+        "sharpe": 0.1056,
+        "total_pnl": 15.3,
+        "ann_pnl": 0.455475
+      },
+      {
+        "block": "range",
+        "terms": [
+          "vol_term",
+          "er_drop_term"
+        ],
+        "sharpe": 0.0249,
+        "total_pnl": 4.06,
+        "ann_pnl": 0.120865
+      },
+      {
+        "block": "range",
+        "terms": [
+          "vol_term",
+          "autocorr_term"
+        ],
+        "sharpe": -0.0188,
+        "total_pnl": -2.83,
+        "ann_pnl": -0.084248
+      },
+      {
+        "block": "range",
+        "terms": [
+          "macd_div_term",
+          "rsi_div_term"
+        ],
+        "sharpe": 0.0268,
+        "total_pnl": 2.06,
+        "ann_pnl": 0.061325
+      },
+      {
+        "block": "range",
+        "terms": [
+          "macd_div_term",
+          "mom_decel_term"
+        ],
+        "sharpe": 0.0541,
+        "total_pnl": 6.17,
+        "ann_pnl": 0.183679
+      },
+      {
+        "block": "range",
+        "terms": [
+          "macd_div_term",
+          "er_drop_term"
+        ],
+        "sharpe": -0.0914,
+        "total_pnl": -11.71,
+        "ann_pnl": -0.348602
+      },
+      {
+        "block": "range",
+        "terms": [
+          "macd_div_term",
+          "autocorr_term"
+        ],
+        "sharpe": 0.0333,
+        "total_pnl": 3.54,
+        "ann_pnl": 0.105385
+      },
+      {
+        "block": "range",
+        "terms": [
+          "rsi_div_term",
+          "mom_decel_term"
+        ],
+        "sharpe": 0.1169,
+        "total_pnl": 10.21,
+        "ann_pnl": 0.303948
+      },
+      {
+        "block": "range",
+        "terms": [
+          "rsi_div_term",
+          "er_drop_term"
+        ],
+        "sharpe": -0.2265,
+        "total_pnl": -23.33,
+        "ann_pnl": -0.694526
+      },
+      {
+        "block": "range",
+        "terms": [
+          "rsi_div_term",
+          "autocorr_term"
+        ],
+        "sharpe": -0.081,
+        "total_pnl": -7.1,
+        "ann_pnl": -0.211364
+      },
+      {
+        "block": "range",
+        "terms": [
+          "mom_decel_term",
+          "er_drop_term"
+        ],
+        "sharpe": -0.0017,
+        "total_pnl": -0.35,
+        "ann_pnl": -0.010419
+      },
+      {
+        "block": "range",
+        "terms": [
+          "mom_decel_term",
+          "autocorr_term"
+        ],
+        "sharpe": 0.1132,
+        "total_pnl": 21.7,
+        "ann_pnl": 0.646001
+      },
+      {
+        "block": "range",
+        "terms": [
+          "er_drop_term",
+          "autocorr_term"
+        ],
+        "sharpe": 0.0456,
+        "total_pnl": 9.76,
+        "ann_pnl": 0.290552
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "dir_term"
+        ],
+        "sharpe": -0.1542,
+        "total_pnl": -32.89,
+        "ann_pnl": -0.979123
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "qual_term"
+        ],
+        "sharpe": -0.12,
+        "total_pnl": -9.4,
+        "ann_pnl": -0.279835
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "cont_term"
+        ],
+        "sharpe": 0.24,
+        "total_pnl": 6.38,
+        "ann_pnl": 0.18993
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "ext_low"
+        ],
+        "sharpe": 0.0877,
+        "total_pnl": 12.15,
+        "ann_pnl": 0.361701
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "ema_align_term"
+        ],
+        "sharpe": -0.0333,
+        "total_pnl": -6.73,
+        "ann_pnl": -0.20035
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "mom10_term"
+        ],
+        "sharpe": -0.1562,
+        "total_pnl": -33.65,
+        "ann_pnl": -1.001748
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "r2_term"
+        ],
+        "sharpe": 0.0688,
+        "total_pnl": 11.79,
+        "ann_pnl": 0.350984
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "dirpers_term"
+        ],
+        "sharpe": -0.0009,
+        "total_pnl": -0.04,
+        "ann_pnl": -0.001191
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "dir_term",
+          "qual_term"
+        ],
+        "sharpe": 0.045,
+        "total_pnl": 8.49,
+        "ann_pnl": 0.252744
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "dir_term",
+          "cont_term"
+        ],
+        "sharpe": 0.1789,
+        "total_pnl": 6.14,
+        "ann_pnl": 0.182786
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "dir_term",
+          "ext_low"
+        ],
+        "sharpe": -0.1833,
+        "total_pnl": -37.66,
+        "ann_pnl": -1.121125
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "dir_term",
+          "ema_align_term"
+        ],
+        "sharpe": -0.0004,
+        "total_pnl": -0.08,
+        "ann_pnl": -0.002382
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "dir_term",
+          "mom10_term"
+        ],
+        "sharpe": -0.1113,
+        "total_pnl": -24.0,
+        "ann_pnl": -0.714471
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "dir_term",
+          "r2_term"
+        ],
+        "sharpe": -0.0205,
+        "total_pnl": -4.1,
+        "ann_pnl": -0.122056
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "dir_term",
+          "dirpers_term"
+        ],
+        "sharpe": -0.044,
+        "total_pnl": -7.43,
+        "ann_pnl": -0.221188
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "qual_term",
+          "cont_term"
+        ],
+        "sharpe": 0.2555,
+        "total_pnl": 6.78,
+        "ann_pnl": 0.201838
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "qual_term",
+          "ext_low"
+        ],
+        "sharpe": 0.0967,
+        "total_pnl": 8.83,
+        "ann_pnl": 0.262866
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "qual_term",
+          "ema_align_term"
+        ],
+        "sharpe": -0.0795,
+        "total_pnl": -14.65,
+        "ann_pnl": -0.436125
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "qual_term",
+          "mom10_term"
+        ],
+        "sharpe": -0.0889,
+        "total_pnl": -17.07,
+        "ann_pnl": -0.508168
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "qual_term",
+          "r2_term"
+        ],
+        "sharpe": 0.1165,
+        "total_pnl": 14.74,
+        "ann_pnl": 0.438804
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "qual_term",
+          "dirpers_term"
+        ],
+        "sharpe": 0.1255,
+        "total_pnl": 5.31,
+        "ann_pnl": 0.158077
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "cont_term",
+          "ext_low"
+        ],
+        "sharpe": 0.2663,
+        "total_pnl": 7.36,
+        "ann_pnl": 0.219105
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "cont_term",
+          "ema_align_term"
+        ],
+        "sharpe": -0.0168,
+        "total_pnl": -0.75,
+        "ann_pnl": -0.022327
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "cont_term",
+          "mom10_term"
+        ],
+        "sharpe": -0.0373,
+        "total_pnl": -2.82,
+        "ann_pnl": -0.08395
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "cont_term",
+          "r2_term"
+        ],
+        "sharpe": 0.2087,
+        "total_pnl": 5.92,
+        "ann_pnl": 0.176236
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "cont_term",
+          "dirpers_term"
+        ],
+        "sharpe": 0.2555,
+        "total_pnl": 6.78,
+        "ann_pnl": 0.201838
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "ext_low",
+          "ema_align_term"
+        ],
+        "sharpe": -0.0283,
+        "total_pnl": -5.8,
+        "ann_pnl": -0.172664
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "ext_low",
+          "mom10_term"
+        ],
+        "sharpe": -0.1666,
+        "total_pnl": -35.72,
+        "ann_pnl": -1.063372
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "ext_low",
+          "r2_term"
+        ],
+        "sharpe": -0.0365,
+        "total_pnl": -5.33,
+        "ann_pnl": -0.158672
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "ext_low",
+          "dirpers_term"
+        ],
+        "sharpe": 0.1025,
+        "total_pnl": 8.13,
+        "ann_pnl": 0.242027
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "ema_align_term",
+          "mom10_term"
+        ],
+        "sharpe": -0.032,
+        "total_pnl": -6.33,
+        "ann_pnl": -0.188442
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "ema_align_term",
+          "r2_term"
+        ],
+        "sharpe": -0.0609,
+        "total_pnl": -11.55,
+        "ann_pnl": -0.343839
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "ema_align_term",
+          "dirpers_term"
+        ],
+        "sharpe": -0.0518,
+        "total_pnl": -9.17,
+        "ann_pnl": -0.272988
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "mom10_term",
+          "r2_term"
+        ],
+        "sharpe": -0.0494,
+        "total_pnl": -10.16,
+        "ann_pnl": -0.30246
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "mom10_term",
+          "dirpers_term"
+        ],
+        "sharpe": -0.1176,
+        "total_pnl": -21.28,
+        "ann_pnl": -0.633498
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "r2_term",
+          "dirpers_term"
+        ],
+        "sharpe": -0.0407,
+        "total_pnl": -3.66,
+        "ann_pnl": -0.108957
+      }
+    ]
+  },
+  "_pooled_all": {
+    "n_days": 8465,
+    "rows": [
+      {
+        "block": "baseline",
+        "terms": [
+          "equal-weight (8 core)"
+        ],
+        "sharpe": 0.3559,
+        "total_pnl": 15.25,
+        "ann_pnl": 0.453987
+      },
+      {
+        "block": "range",
+        "terms": [
+          "rev_term"
+        ],
+        "sharpe": 0.2548,
+        "total_pnl": 8.45,
+        "ann_pnl": 0.251553
+      },
+      {
+        "block": "range",
+        "terms": [
+          "lvl_term"
+        ],
+        "sharpe": 0.1008,
+        "total_pnl": 10.98,
+        "ann_pnl": 0.326871
+      },
+      {
+        "block": "range",
+        "terms": [
+          "timing_term"
+        ],
+        "sharpe": 0.0934,
+        "total_pnl": 17.43,
+        "ann_pnl": 0.518885
+      },
+      {
+        "block": "range",
+        "terms": [
+          "vol_term"
+        ],
+        "sharpe": -0.0722,
+        "total_pnl": -11.54,
+        "ann_pnl": -0.343542
+      },
+      {
+        "block": "range",
+        "terms": [
+          "macd_div_term"
+        ],
+        "sharpe": -0.017,
+        "total_pnl": -1.99,
+        "ann_pnl": -0.059242
+      },
+      {
+        "block": "range",
+        "terms": [
+          "rsi_div_term"
+        ],
+        "sharpe": -0.0143,
+        "total_pnl": -1.08,
+        "ann_pnl": -0.032151
+      },
+      {
+        "block": "range",
+        "terms": [
+          "mom_decel_term"
+        ],
+        "sharpe": 0.0934,
+        "total_pnl": 17.43,
+        "ann_pnl": 0.518885
+      },
+      {
+        "block": "range",
+        "terms": [
+          "er_drop_term"
+        ],
+        "sharpe": -0.0624,
+        "total_pnl": -13.36,
+        "ann_pnl": -0.397722
+      },
+      {
+        "block": "range",
+        "terms": [
+          "autocorr_term"
+        ],
+        "sharpe": -0.0082,
+        "total_pnl": -1.55,
+        "ann_pnl": -0.046143
+      },
+      {
+        "block": "range",
+        "terms": [
+          "rev_term",
+          "lvl_term"
+        ],
+        "sharpe": 0.2787,
+        "total_pnl": 9.35,
+        "ann_pnl": 0.278346
+      },
+      {
+        "block": "range",
+        "terms": [
+          "rev_term",
+          "timing_term"
+        ],
+        "sharpe": 0.201,
+        "total_pnl": 10.64,
+        "ann_pnl": 0.316749
+      },
+      {
+        "block": "range",
+        "terms": [
+          "rev_term",
+          "vol_term"
+        ],
+        "sharpe": 0.2593,
+        "total_pnl": 8.64,
+        "ann_pnl": 0.25721
+      },
+      {
+        "block": "range",
+        "terms": [
+          "rev_term",
+          "macd_div_term"
+        ],
+        "sharpe": 0.2329,
+        "total_pnl": 9.5,
+        "ann_pnl": 0.282812
+      },
+      {
+        "block": "range",
+        "terms": [
+          "rev_term",
+          "rsi_div_term"
+        ],
+        "sharpe": 0.2522,
+        "total_pnl": 8.37,
+        "ann_pnl": 0.249172
+      },
+      {
+        "block": "range",
+        "terms": [
+          "rev_term",
+          "mom_decel_term"
+        ],
+        "sharpe": 0.201,
+        "total_pnl": 10.64,
+        "ann_pnl": 0.316749
+      },
+      {
+        "block": "range",
+        "terms": [
+          "rev_term",
+          "er_drop_term"
+        ],
+        "sharpe": 0.228,
+        "total_pnl": 12.07,
+        "ann_pnl": 0.35932
+      },
+      {
+        "block": "range",
+        "terms": [
+          "rev_term",
+          "autocorr_term"
+        ],
+        "sharpe": 0.2617,
+        "total_pnl": 12.32,
+        "ann_pnl": 0.366762
+      },
+      {
+        "block": "range",
+        "terms": [
+          "lvl_term",
+          "timing_term"
+        ],
+        "sharpe": 0.3292,
+        "total_pnl": 41.94,
+        "ann_pnl": 1.248539
+      },
+      {
+        "block": "range",
+        "terms": [
+          "lvl_term",
+          "vol_term"
+        ],
+        "sharpe": -0.0021,
+        "total_pnl": -0.2,
+        "ann_pnl": -0.005954
+      },
+      {
+        "block": "range",
+        "terms": [
+          "lvl_term",
+          "macd_div_term"
+        ],
+        "sharpe": 0.0899,
+        "total_pnl": 9.04,
+        "ann_pnl": 0.269118
+      },
+      {
+        "block": "range",
+        "terms": [
+          "lvl_term",
+          "rsi_div_term"
+        ],
+        "sharpe": 0.235,
+        "total_pnl": 13.32,
+        "ann_pnl": 0.396532
+      },
+      {
+        "block": "range",
+        "terms": [
+          "lvl_term",
+          "mom_decel_term"
+        ],
+        "sharpe": 0.3292,
+        "total_pnl": 41.94,
+        "ann_pnl": 1.248539
+      },
+      {
+        "block": "range",
+        "terms": [
+          "lvl_term",
+          "er_drop_term"
+        ],
+        "sharpe": 0.0443,
+        "total_pnl": 7.11,
+        "ann_pnl": 0.211662
+      },
+      {
+        "block": "range",
+        "terms": [
+          "lvl_term",
+          "autocorr_term"
+        ],
+        "sharpe": 0.1858,
+        "total_pnl": 26.35,
+        "ann_pnl": 0.78443
+      },
+      {
+        "block": "range",
+        "terms": [
+          "timing_term",
+          "vol_term"
+        ],
+        "sharpe": 0.1056,
+        "total_pnl": 15.3,
+        "ann_pnl": 0.455475
+      },
+      {
+        "block": "range",
+        "terms": [
+          "timing_term",
+          "macd_div_term"
+        ],
+        "sharpe": 0.0541,
+        "total_pnl": 6.17,
+        "ann_pnl": 0.183679
+      },
+      {
+        "block": "range",
+        "terms": [
+          "timing_term",
+          "rsi_div_term"
+        ],
+        "sharpe": 0.1169,
+        "total_pnl": 10.21,
+        "ann_pnl": 0.303948
+      },
+      {
+        "block": "range",
+        "terms": [
+          "timing_term",
+          "mom_decel_term"
+        ],
+        "sharpe": 0.0934,
+        "total_pnl": 17.43,
+        "ann_pnl": 0.518885
+      },
+      {
+        "block": "range",
+        "terms": [
+          "timing_term",
+          "er_drop_term"
+        ],
+        "sharpe": -0.0017,
+        "total_pnl": -0.35,
+        "ann_pnl": -0.010419
+      },
+      {
+        "block": "range",
+        "terms": [
+          "timing_term",
+          "autocorr_term"
+        ],
+        "sharpe": 0.1132,
+        "total_pnl": 21.7,
+        "ann_pnl": 0.646001
+      },
+      {
+        "block": "range",
+        "terms": [
+          "vol_term",
+          "macd_div_term"
+        ],
+        "sharpe": 0.0311,
+        "total_pnl": 2.54,
+        "ann_pnl": 0.075615
+      },
+      {
+        "block": "range",
+        "terms": [
+          "vol_term",
+          "rsi_div_term"
+        ],
+        "sharpe": -0.1024,
+        "total_pnl": -5.43,
+        "ann_pnl": -0.161649
+      },
+      {
+        "block": "range",
+        "terms": [
+          "vol_term",
+          "mom_decel_term"
+        ],
+        "sharpe": 0.1056,
+        "total_pnl": 15.3,
+        "ann_pnl": 0.455475
+      },
+      {
+        "block": "range",
+        "terms": [
+          "vol_term",
+          "er_drop_term"
+        ],
+        "sharpe": 0.0249,
+        "total_pnl": 4.06,
+        "ann_pnl": 0.120865
+      },
+      {
+        "block": "range",
+        "terms": [
+          "vol_term",
+          "autocorr_term"
+        ],
+        "sharpe": -0.0188,
+        "total_pnl": -2.83,
+        "ann_pnl": -0.084248
+      },
+      {
+        "block": "range",
+        "terms": [
+          "macd_div_term",
+          "rsi_div_term"
+        ],
+        "sharpe": 0.0268,
+        "total_pnl": 2.06,
+        "ann_pnl": 0.061325
+      },
+      {
+        "block": "range",
+        "terms": [
+          "macd_div_term",
+          "mom_decel_term"
+        ],
+        "sharpe": 0.0541,
+        "total_pnl": 6.17,
+        "ann_pnl": 0.183679
+      },
+      {
+        "block": "range",
+        "terms": [
+          "macd_div_term",
+          "er_drop_term"
+        ],
+        "sharpe": -0.0914,
+        "total_pnl": -11.71,
+        "ann_pnl": -0.348602
+      },
+      {
+        "block": "range",
+        "terms": [
+          "macd_div_term",
+          "autocorr_term"
+        ],
+        "sharpe": 0.0333,
+        "total_pnl": 3.54,
+        "ann_pnl": 0.105385
+      },
+      {
+        "block": "range",
+        "terms": [
+          "rsi_div_term",
+          "mom_decel_term"
+        ],
+        "sharpe": 0.1169,
+        "total_pnl": 10.21,
+        "ann_pnl": 0.303948
+      },
+      {
+        "block": "range",
+        "terms": [
+          "rsi_div_term",
+          "er_drop_term"
+        ],
+        "sharpe": -0.2265,
+        "total_pnl": -23.33,
+        "ann_pnl": -0.694526
+      },
+      {
+        "block": "range",
+        "terms": [
+          "rsi_div_term",
+          "autocorr_term"
+        ],
+        "sharpe": -0.081,
+        "total_pnl": -7.1,
+        "ann_pnl": -0.211364
+      },
+      {
+        "block": "range",
+        "terms": [
+          "mom_decel_term",
+          "er_drop_term"
+        ],
+        "sharpe": -0.0017,
+        "total_pnl": -0.35,
+        "ann_pnl": -0.010419
+      },
+      {
+        "block": "range",
+        "terms": [
+          "mom_decel_term",
+          "autocorr_term"
+        ],
+        "sharpe": 0.1132,
+        "total_pnl": 21.7,
+        "ann_pnl": 0.646001
+      },
+      {
+        "block": "range",
+        "terms": [
+          "er_drop_term",
+          "autocorr_term"
+        ],
+        "sharpe": 0.0456,
+        "total_pnl": 9.76,
+        "ann_pnl": 0.290552
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "dir_term"
+        ],
+        "sharpe": -0.1542,
+        "total_pnl": -32.89,
+        "ann_pnl": -0.979123
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "qual_term"
+        ],
+        "sharpe": -0.12,
+        "total_pnl": -9.4,
+        "ann_pnl": -0.279835
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "cont_term"
+        ],
+        "sharpe": 0.24,
+        "total_pnl": 6.38,
+        "ann_pnl": 0.18993
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "ext_low"
+        ],
+        "sharpe": 0.0877,
+        "total_pnl": 12.15,
+        "ann_pnl": 0.361701
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "ema_align_term"
+        ],
+        "sharpe": -0.0333,
+        "total_pnl": -6.73,
+        "ann_pnl": -0.20035
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "mom10_term"
+        ],
+        "sharpe": -0.1562,
+        "total_pnl": -33.65,
+        "ann_pnl": -1.001748
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "r2_term"
+        ],
+        "sharpe": 0.0688,
+        "total_pnl": 11.79,
+        "ann_pnl": 0.350984
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "dirpers_term"
+        ],
+        "sharpe": -0.0009,
+        "total_pnl": -0.04,
+        "ann_pnl": -0.001191
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "dir_term",
+          "qual_term"
+        ],
+        "sharpe": 0.045,
+        "total_pnl": 8.49,
+        "ann_pnl": 0.252744
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "dir_term",
+          "cont_term"
+        ],
+        "sharpe": 0.1789,
+        "total_pnl": 6.14,
+        "ann_pnl": 0.182786
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "dir_term",
+          "ext_low"
+        ],
+        "sharpe": -0.1833,
+        "total_pnl": -37.66,
+        "ann_pnl": -1.121125
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "dir_term",
+          "ema_align_term"
+        ],
+        "sharpe": -0.0004,
+        "total_pnl": -0.08,
+        "ann_pnl": -0.002382
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "dir_term",
+          "mom10_term"
+        ],
+        "sharpe": -0.1113,
+        "total_pnl": -24.0,
+        "ann_pnl": -0.714471
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "dir_term",
+          "r2_term"
+        ],
+        "sharpe": -0.0205,
+        "total_pnl": -4.1,
+        "ann_pnl": -0.122056
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "dir_term",
+          "dirpers_term"
+        ],
+        "sharpe": -0.044,
+        "total_pnl": -7.43,
+        "ann_pnl": -0.221188
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "qual_term",
+          "cont_term"
+        ],
+        "sharpe": 0.2555,
+        "total_pnl": 6.78,
+        "ann_pnl": 0.201838
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "qual_term",
+          "ext_low"
+        ],
+        "sharpe": 0.0967,
+        "total_pnl": 8.83,
+        "ann_pnl": 0.262866
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "qual_term",
+          "ema_align_term"
+        ],
+        "sharpe": -0.0795,
+        "total_pnl": -14.65,
+        "ann_pnl": -0.436125
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "qual_term",
+          "mom10_term"
+        ],
+        "sharpe": -0.0889,
+        "total_pnl": -17.07,
+        "ann_pnl": -0.508168
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "qual_term",
+          "r2_term"
+        ],
+        "sharpe": 0.1165,
+        "total_pnl": 14.74,
+        "ann_pnl": 0.438804
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "qual_term",
+          "dirpers_term"
+        ],
+        "sharpe": 0.1255,
+        "total_pnl": 5.31,
+        "ann_pnl": 0.158077
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "cont_term",
+          "ext_low"
+        ],
+        "sharpe": 0.2663,
+        "total_pnl": 7.36,
+        "ann_pnl": 0.219105
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "cont_term",
+          "ema_align_term"
+        ],
+        "sharpe": -0.0168,
+        "total_pnl": -0.75,
+        "ann_pnl": -0.022327
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "cont_term",
+          "mom10_term"
+        ],
+        "sharpe": -0.0373,
+        "total_pnl": -2.82,
+        "ann_pnl": -0.08395
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "cont_term",
+          "r2_term"
+        ],
+        "sharpe": 0.2087,
+        "total_pnl": 5.92,
+        "ann_pnl": 0.176236
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "cont_term",
+          "dirpers_term"
+        ],
+        "sharpe": 0.2555,
+        "total_pnl": 6.78,
+        "ann_pnl": 0.201838
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "ext_low",
+          "ema_align_term"
+        ],
+        "sharpe": -0.0283,
+        "total_pnl": -5.8,
+        "ann_pnl": -0.172664
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "ext_low",
+          "mom10_term"
+        ],
+        "sharpe": -0.1666,
+        "total_pnl": -35.72,
+        "ann_pnl": -1.063372
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "ext_low",
+          "r2_term"
+        ],
+        "sharpe": -0.0365,
+        "total_pnl": -5.33,
+        "ann_pnl": -0.158672
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "ext_low",
+          "dirpers_term"
+        ],
+        "sharpe": 0.1025,
+        "total_pnl": 8.13,
+        "ann_pnl": 0.242027
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "ema_align_term",
+          "mom10_term"
+        ],
+        "sharpe": -0.032,
+        "total_pnl": -6.33,
+        "ann_pnl": -0.188442
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "ema_align_term",
+          "r2_term"
+        ],
+        "sharpe": -0.0609,
+        "total_pnl": -11.55,
+        "ann_pnl": -0.343839
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "ema_align_term",
+          "dirpers_term"
+        ],
+        "sharpe": -0.0518,
+        "total_pnl": -9.17,
+        "ann_pnl": -0.272988
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "mom10_term",
+          "r2_term"
+        ],
+        "sharpe": -0.0494,
+        "total_pnl": -10.16,
+        "ann_pnl": -0.30246
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "mom10_term",
+          "dirpers_term"
+        ],
+        "sharpe": -0.1176,
+        "total_pnl": -21.28,
+        "ann_pnl": -0.633498
+      },
+      {
+        "block": "trend",
+        "terms": [
+          "r2_term",
+          "dirpers_term"
+        ],
+        "sharpe": -0.0407,
+        "total_pnl": -3.66,
+        "ann_pnl": -0.108957
+      }
+    ]
+  }
+}

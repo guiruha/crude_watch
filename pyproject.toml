@@ -39,8 +39,12 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
-pythonpath = ["src"]
+# ``tests`` covers the installable app package (crudewatch); ``backtesting/tests``
+# covers the offline backtesting/research package that lives at the repo root.
+testpaths = ["tests", "backtesting/tests"]
+pythonpath = ["src", "."]
 
 [tool.setuptools.packages.find]
+# Only the app-facing ``crudewatch`` package is installed/distributed; the
+# offline ``backtesting`` package is run in place from the repo root.
 where = ["src"]

@@ -21,13 +21,11 @@ if _SRC.is_dir() and str(_SRC) not in sys.path:
 
 from core.auth import require_login, sidebar_account
 from core.data import load_frames
+from core.selection import render_selection_bar
+from screens.backtest import BacktestScreen
+from screens.component import ComponentScreen
 from screens.contract_exploration import ContractExplorationScreen
-from screens.spread_analytics import (
-    BollingerScreen,
-    CompositeScoreScreen,
-    SeasonalityScreen,
-    TechnicalScreen,
-)
+from screens.opportunity import OpportunityScreen
 from theme.palette import (
     inject_css,
     nav_label,
@@ -46,12 +44,30 @@ inject_css()
 
 # name -> screen class. New screens slot in here.
 SCREENS = {
-    "Composite Score": CompositeScoreScreen,
     "Contract Exploration": ContractExplorationScreen,
-    "Technical Analysis": TechnicalScreen,
-    "Seasonality": SeasonalityScreen,
-    "Bollinger": BollingerScreen,
+    "Opportunity Score": OpportunityScreen,
+    "Régimen": lambda frames: ComponentScreen(frames, "regime"),
+    "Dirección": lambda frames: ComponentScreen(frames, "direction"),
+    "Fuerza": lambda frames: ComponentScreen(frames, "strength"),
+    "Nivel": lambda frames: ComponentScreen(frames, "level"),
+    "Probabilidades": lambda frames: ComponentScreen(frames, "probabilities"),
+    "Fiabilidad": lambda frames: ComponentScreen(frames, "confidence"),
+    "Backtest": BacktestScreen,
 }
+
+# The per-block breakdown screens (marked with an info icon in the nav).
+_INFO_SCREENS = {
+    "Régimen",
+    "Dirección",
+    "Fuerza",
+    "Nivel",
+    "Probabilidades",
+    "Fiabilidad",
+}
+
+
+def _nav_format(name: str) -> str:
+    return f":material/info: {name}" if name in _INFO_SCREENS else name
 
 
 def _dataset_summary(frames: dict[str, pd.DataFrame]) -> dict[str, str]:
@@ -78,7 +94,9 @@ def main() -> None:
         st.divider()
 
         nav_label("Navigation")
-        choice = st.radio("Screen", list(SCREENS), label_visibility="collapsed")
+        choice = st.radio(
+            "Screen", list(SCREENS), format_func=_nav_format, label_visibility="collapsed"
+        )
 
         st.divider()
         nav_label("Dataset")
@@ -91,7 +109,8 @@ def main() -> None:
             unsafe_allow_html=True,
         )
 
-    SCREENS[choice](frames).display()
+    selection = render_selection_bar()
+    SCREENS[choice](frames).display(selection)
 
 
 if __name__ == "__main__":

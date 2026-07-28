@@ -111,7 +111,7 @@ def _auth_shell(inner_html: str) -> None:
           <div class="cw-auth-card">
             <div class="cw-auth-mark">{BRAND_MARK_SVG}</div>
             <div class="cw-auth-word">Crude<span>Watch</span></div>
-            <div class="cw-auth-sub">Calendar-spread analytics for WTI crude futures</div>
+            <div class="cw-auth-sub">Contract exploration for WTI crude futures</div>
             <div class="cw-auth-rule"></div>
             {inner_html}
           </div>

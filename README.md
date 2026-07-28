@@ -1,71 +1,58 @@
 # CrudeWatch
 
-A WTI crude-futures dataset pipeline and a **Calendar Spread Analytics** dashboard.
+A WTI crude-futures **dataset pipeline** and a lightweight Streamlit **contract
+exploration** view.
 
 The project turns a proprietary history of WTI outright prices (2012–2026) into
-fixed-date calendar-spread structures and a three-chapter Streamlit dashboard for
-systematic spread trading — technical, seasonal and statistical context in one place.
+a set of published contract families — outrights, calendar spreads, cracks,
+Brent–WTI and synthetic quarterly/semestral/yearly spreads and flies — and lets
+you browse any single contract's price history in one screen.
 
-> Decision-support only. The tool does not execute or size trades; sizing and
-> execution remain under human control and the firm's risk policies.
+> Decision-support only. The tool does not execute or size trades.
 
 ## Layout
 
 ```
-src/crudewatch/
-  infra/            # constants, raw I/O
-  data_preparation/ # build outrights, calendars, cracks, brent-wti, synthetic spreads/flies
-  plots/            # black & emerald Plotly theme + figures
-  analytics/        # the dashboard engine (pure, testable)
-    structures.py   # the 23 fixed-date structures across 4 tiers
-    data_layer.py   # price matrix, fixed-date series (incl. butterflies A-2B+C), seasonal stack
-    indicators/     # trend, momentum, volatility, statistical (QUANT), + signal panel
-    regime.py       # contango/backwardation, Bollinger layers, dynamic TP/SL, risk metrics
-    seasonality.py  # buffer cone, percentile, monthly heatmap, setup score
-    scoring.py      # regime-weighted composite score
-app/                # Streamlit UI (theme, screens, chapters)
-tests/              # unit + integration tests
+src/crudewatch/       # installable, app-facing package (what the Streamlit app runs)
+  infra/              # constants (incl. FAMILY_LABELS), raw I/O
+  data_preparation/   # build outrights, calendars, cracks, brent-wti, synthetic spreads/flies
+  indicators.py       # shared indicator math (used by features + backtesting)
+  research/           # feature/dataset pipeline: lifecycle, features, level panel, targets, build_dataset
+  scoring/            # live Opportunity Score engine
+  plots/              # black & emerald Plotly theme + figures
+app/                  # Streamlit UI (theme, opportunity + contract-exploration screens)
+
+backtesting/          # OFFLINE only — kept out of src, run in place from the repo root
+  backtest/           # legacy long/flat indicator backtests + HTML reports
+  research/           # walk-forward evaluation, regime-gated backtest, strategy simulation + reports
+  tests/              # tests for the offline backtesting/research code
+scripts/              # run_backtests.py / run_research.py / run_strategy.py (offline report generators)
 ```
 
-## Structure universe (23 fixed-date spreads)
+## Published contract families
 
-| Tier | Count | Members |
-|------|-------|---------|
-| Monthly consecutive | 11 | Jan-Feb … Nov-Dec |
-| Quarterly | 4 | Mar-Jun, Jun-Sep, Sep-Dec, Dec-Mar |
-| Semestral | 4 | Mar-Sep, Jun-Dec, Sep-Mar, Dec-Jun |
-| Butterfly | 4 | (Mar-Jun)-(Jun-Sep) … (Dec-Mar)-(Mar-Jun) |
+`build_all` (in `data_preparation/pipeline.py`) produces one dataframe per
+family from the raw feed:
 
-Each structure is a linear combination of outright legs, so every series
-(including butterflies, `A − 2B + C`, and the year-crossing quarterly/semestral
-spreads) is built uniformly from the outright close matrix.
+| Family | Description |
+|--------|-------------|
+| `outrights` | Exchange-listed WTI outright closes |
+| `calendars` | Consecutive-month calendar spreads |
+| `cracks` | HO and RB crack spreads vs WTI |
+| `brent_wti` | Brent − WTI inter-commodity premium |
+| `quarterly` / `semestral` / `yearly` | Synthetic 3/6/12-month calendar spreads |
+| `flies` | Same-month butterflies (`A − 2B + C`) |
 
-## Dashboard chapters
-
-1. **Technical** — traffic-light signal panel (Trend / Momentum / Volatility /
-   Statistical) plus activatable layers: MA ribbon, Bollinger, Supertrend, RSI,
-   MACD, Z-Score.
-2. **Seasonality** — every vintage aligned on a **days-to-expiry** axis with a
-   ±N-day buffer cone, current percentile, Seasonal Setup Score, monthly heatmap
-   and fundamental context.
-3. **Bollinger** — regime detection (contango → mean-reversion, backwardation →
-   breakout; butterflies always mean-revert), ±1/2/3σ bands, dynamic TP/SL, risk
-   metrics and a simulated position tracker.
-4. **Score** — regime-weighted composite of every vote into a −100…+100 gauge,
-   with the vote breakdown and the QUANT mean-reversion diagnostics (Hurst,
-   half-life, ADF, variance ratio).
-
-All indicators are **close-based**: a fixed-date spread is a difference of leg
-closes and has no meaningful intraday high/low, so ATR/ADX/Supertrend use the
-close-to-close true range.
+The **Contract Exploration** screen picks a family and a contract, then charts
+its price history with summary stats and the underlying table.
 
 ## Setup
 
 ```bash
-uv sync --extra app --group dev     # app + test dependencies
+uv sync --extra app --group dev     # app dependencies
 ```
 
-## Run the dashboard
+## Run the app
 
 ```bash
 uv run streamlit run app/main.py
@@ -73,15 +60,6 @@ uv run streamlit run app/main.py
 
 First launch builds the processed parquet cache from the raw workbook (~30s);
 later launches read the cache.
-
-## Tests
-
-```bash
-uv run pytest
-```
-
-The integration tests build and score every structure from the processed data;
-they skip automatically when the processed parquet is absent.
 
 ## Hosting privately (free) with Google login
 

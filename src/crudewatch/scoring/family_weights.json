@@ -1,0 +1,74 @@
+{
+  "quarterly": {
+    "range": {
+      "rev_term": 0.241353,
+      "lvl_term": 0.24809,
+      "timing_term": 0.2,
+      "vol_term": 0.205812,
+      "macd_div_term": 0.056855,
+      "rsi_div_term": 0.0,
+      "mom_decel_term": 0.030985,
+      "er_drop_term": 0.008133,
+      "autocorr_term": 0.008772
+    },
+    "trend": {
+      "dir_term": 0.259098,
+      "qual_term": 0.2,
+      "cont_term": 0.260328,
+      "ext_low": 0.280574,
+      "ema_align_term": 0.0,
+      "mom10_term": 0.0,
+      "r2_term": 0.0,
+      "dirpers_term": 0.0
+    },
+    "transition_shrink": 0.4
+  },
+  "semestral": {
+    "range": {
+      "rev_term": 0.208061,
+      "lvl_term": 0.217606,
+      "timing_term": 0.238778,
+      "vol_term": 0.230148,
+      "macd_div_term": 0.051776,
+      "rsi_div_term": 0.00544,
+      "mom_decel_term": 0.036536,
+      "er_drop_term": 0.006486,
+      "autocorr_term": 0.005169
+    },
+    "trend": {
+      "dir_term": 0.232727,
+      "qual_term": 0.215318,
+      "cont_term": 0.242589,
+      "ext_low": 0.282747,
+      "ema_align_term": 0.0131,
+      "mom10_term": 0.009833,
+      "r2_term": 0.002308,
+      "dirpers_term": 0.001379
+    },
+    "transition_shrink": 0.4
+  },
+  "yearly": {
+    "range": {
+      "rev_term": 0.316537,
+      "lvl_term": 0.224057,
+      "timing_term": 0.2,
+      "vol_term": 0.259407,
+      "macd_div_term": 0.0,
+      "rsi_div_term": 0.0,
+      "mom_decel_term": 0.0,
+      "er_drop_term": 0.0,
+      "autocorr_term": 0.0
+    },
+    "trend": {
+      "dir_term": 0.2,
+      "qual_term": 0.212452,
+      "cont_term": 0.244904,
+      "ext_low": 0.253405,
+      "ema_align_term": 0.0,
+      "mom10_term": 0.0,
+      "r2_term": 0.045494,
+      "dirpers_term": 0.043745
+    },
+    "transition_shrink": 0.4
+  }
+}
