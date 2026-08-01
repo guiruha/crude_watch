@@ -14,6 +14,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from crudewatch.infra import FAMILY_LABELS
+from crudewatch.scoring.reliability import HEADLINE, MEASURED_ON, reliability_for
 
 from core.scoring import (
     analogous_outcomes_cached,
@@ -31,6 +32,8 @@ from theme.palette import (
     SUBTEXT,
     SURFACE,
     TEXT,
+    caveat_note,
+    reliability_chip,
     title_block,
 )
 
@@ -87,6 +90,17 @@ class OpportunityScreen:
             "Una puntuación compuesta (−100…+100) por instrumento: reversión en rango, "
             "continuación en tendencia, calibrada por familia y en base ejecutable open[t+1].",
         )
+        caveat_note(
+            f"<p>{HEADLINE}</p>"
+            "<p>Los pesos ajustados se rechazaron en <b>3 de 4</b> familias evaluadas: "
+            "batían a los pesos iguales dentro de muestra, pero <b>perdían fuera de "
+            "muestra</b>. Esas familias usan pesos iguales. En <code>flies</code> el "
+            "ajuste llegaba a <b>−0.174</b> fuera de muestra frente a <b>0.348</b> con "
+            "pesos iguales.</p>"
+            f"<p>Cuatro familias (<code>outrights</code>, <code>calendars</code>, "
+            "<code>cracks</code>, <code>brent_wti</code>) <b>no están evaluadas</b>: "
+            f"no hay medida de fiabilidad para ellas. Última medición: {MEASURED_ON}.</p>"
+        )
         self._how_it_works()
 
         if selection.contract is None:
@@ -115,7 +129,9 @@ decisión, combinando los bloques calculados sobre el último dato disponible y
 | **P(continuación)** | Probabilidad histórica de que el movimiento continúe |
 | **Fiabilidad** | *Informativa* (no entra en el score): track record de setups análogos — cuánto acertó seguir la acción |
 
-**Cómo se combinan (pesos iguales por ahora):**
+**Cómo se combinan.** Por defecto, **pesos iguales**. Sólo se usan pesos ajustados
+en una familia donde han superado a los pesos iguales *fuera de muestra*
+(validación walk-forward); en el resto se descartaron por sobreajuste.
 - **Rango** → `0.25·reversión + 0.25·nivel + 0.25·timing + 0.25·volatilidad`, y se opera *en contra* del extremo (caro → corto, barato → largo).
 - **Tendencia** → `0.25·dirección + 0.25·fuerza + 0.25·continuación + 0.25·extensión`, siguiendo la dirección.
 - **Transición** → se encoge la señal (mayor incertidumbre).
@@ -158,6 +174,9 @@ la señal se forma con datos as-of `t`. Al elegir una fecha, el cálculo es
             f"Opportunity Score {opportunity:+.0f} — {action}</div>",
             unsafe_allow_html=True,
         )
+        # Right under the number, so the score is never read without its
+        # measured reliability alongside it.
+        reliability_chip(_label(family), reliability_for(family))
 
         left, right = st.columns([1, 1])
         with left:

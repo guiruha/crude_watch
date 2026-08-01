@@ -412,6 +412,35 @@ def inject_css() -> None:
             background: transparent !important;
         }}
 
+        /* Caveat panel — measured limits of the score. Amber, always visible. */
+        .cw-caveat {{
+            display: flex; gap: 13px; align-items: flex-start;
+            background: {SURFACE}; border: 1px solid {BORDER};
+            border-left: 4px solid {AMBER}; border-radius: 14px;
+            padding: 15px 20px; margin: 2px 0 18px;
+        }}
+        .cw-caveat .ico {{ color: {AMBER}; flex: none; font-size: 19px; line-height: 1.2; }}
+        .cw-caveat .txt {{ color: {SUBTEXT}; font-size: 15px; line-height: 1.6; flex: 1; }}
+        .cw-caveat .txt p {{ margin: 0 0 10px; }}
+        .cw-caveat .txt p:last-child {{ margin-bottom: 0; }}
+        .cw-caveat .txt b {{ color: {TEXT}; font-weight: 700; }}
+        .cw-caveat .txt code {{
+            background: {SURFACE_2}; border-radius: 4px; padding: 1px 5px;
+            font-size: .92em; color: {TEXT};
+        }}
+
+        /* Per-family reliability chip. */
+        .cw-rel {{
+            background: {SURFACE}; border: 1px solid {BORDER}; border-left: 4px solid {SUBTEXT};
+            border-radius: 12px; padding: 11px 15px; margin: 0 0 14px;
+        }}
+        .cw-rel .hd {{ font-size: 13.5px; color: {SUBTEXT}; margin-bottom: 3px; }}
+        .cw-rel .vl {{
+            font-size: 14px; color: {TEXT}; font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }}
+        .cw-rel .nt {{ font-size: 12.5px; color: {SUBTEXT}; margin-top: 4px; line-height: 1.5; }}
+
         /* Block intro panel — the block's explanation as a carded info note. */
         .cw-intro {{
             display: flex; gap: 13px; align-items: flex-start;
@@ -677,6 +706,52 @@ def signal_chip(family: str, bias_label: str, conviction: float, tone: str) -> N
             <div class="fam">{family}</div>
             <div class="bias"><span class="cw-sig-ico">{glyph}</span>{bias_label}</div>
             <div class="conv">{conv}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def caveat_note(html: str) -> None:
+    """Render an amber-accented caveat panel — the honest-limits counterpart to
+    ``cw-intro``. Always visible, never behind an expander: a limitation the user
+    has to open a disclosure to find is a limitation they will not read."""
+    st.markdown(
+        f"""
+        <div class="cw-caveat">
+            <div class="ico">&#9888;</div>
+            <div class="txt">{html}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+_BAND_TONE = {"modest": ACCENT, "weak": AMBER, "negligible": BEAR, "unmeasured": SUBTEXT}
+_BAND_LABEL = {
+    "modest": "Fiabilidad modesta",
+    "weak": "Fiabilidad baja",
+    "negligible": "Fiabilidad casi nula",
+    "unmeasured": "Sin medir",
+}
+
+
+def reliability_chip(family_label: str, rel) -> None:
+    """One chip stating a family's measured out-of-sample reliability.
+
+    ``rel`` is a :class:`crudewatch.scoring.reliability.FamilyReliability`. The
+    band word carries the meaning so the colour is never the only encoding.
+    """
+    tone = _BAND_TONE.get(rel.band, SUBTEXT)
+    label = _BAND_LABEL.get(rel.band, "Sin medir")
+    value = "—" if rel.sharpe is None else f"Sharpe OOS {rel.sharpe:.2f}"
+    weighting = "pesos ajustados" if rel.weighting == "fitted" else "pesos iguales"
+    st.markdown(
+        f"""
+        <div class="cw-rel" style="border-left-color:{tone}">
+            <div class="hd"><b style="color:{tone}">{label}</b> · {family_label}</div>
+            <div class="vl">{value} · {weighting}</div>
+            <div class="nt">{rel.note}</div>
         </div>
         """,
         unsafe_allow_html=True,
