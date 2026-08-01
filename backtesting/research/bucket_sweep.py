@@ -240,7 +240,7 @@ def cell_stats(
 # same theme mostly restate each other — z_20 and z_50 are one measurement at
 # two windows — so pairing them buys a narrower cell, not a new question.
 THEMES: dict[str, tuple[str, ...]] = {
-    "level": ("z_10", "z_20", "z_50", "pctb_20_2", "pctb_10_1_5", "keltner_dist_20"),
+    "level": ("z_10", "z_20", "z_50", "keltner_dist_20"),
     "direction": ("slope_20", "macd_hist", "ema_align", "mom_5", "mom_10", "mom_20"),
     "exhaustion": ("rsi_div_14", "macd_div", "mom_decel_10", "er_drop_20"),
     "regime": ("er_20", "variance_ratio_5", "autocorr_20"),
@@ -249,9 +249,25 @@ THEMES: dict[str, tuple[str, ...]] = {
     "volatility": ("vol_ratio",),
 }
 
+# Excluded from the sweep, not from the project. Bollinger %B expands to
+# (z + k) / 2k, an exact affine transform of the z-score over the same window,
+# so with rank-based quantile bucketing these produce byte-identical bucket
+# codes to z_10 / z_20 and cost compute for zero information. They stay in
+# ``FEATURES`` and on the dashboard, where %B is the more legible presentation.
+EXCLUDED_INDICATORS: dict[str, str] = {
+    "pctb_10_1_5": "affine transform of z_10",
+    "pctb_20_2": "affine transform of z_20",
+}
+
 INDICATOR_THEME: dict[str, str] = {
     name: theme for theme, names in THEMES.items() for name in names
 }
+
+# The indicators the sweep actually runs on: FEATURE_NAMES minus the exclusions,
+# in FEATURE_NAMES order so combination enumeration stays deterministic.
+SWEEP_INDICATORS: tuple[str, ...] = tuple(
+    n for n in FEATURE_NAMES if n not in EXCLUDED_INDICATORS
+)
 
 
 def _by_theme(
@@ -394,7 +410,7 @@ def run_family(
     full = add_forward_returns(featured, horizons=tuple(horizons))
 
     fwd_cols = [f"fwd_{h}" for h in horizons]
-    featured_ok = full.dropna(subset=list(FEATURE_NAMES))
+    featured_ok = full.dropna(subset=list(SWEEP_INDICATORS))
 
     if len(featured_ok) < min_history:
         raise InsufficientData(
@@ -403,7 +419,7 @@ def run_family(
             f"bucketed"
         )
 
-    codes, cutoffs = bucketize(featured_ok, FEATURE_NAMES, n_buckets, min_history)
+    codes, cutoffs = bucketize(featured_ok, SWEEP_INDICATORS, n_buckets, min_history)
     codeable = (codes != MISSING_CODE).all(axis=1)
     codes = codes.loc[codeable]
     panel = featured_ok.loc[codes.index].dropna(subset=fwd_cols)

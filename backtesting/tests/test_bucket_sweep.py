@@ -238,7 +238,9 @@ def test_decode_cell_maps_joint_code_to_labels():
 from crudewatch.research.features import FEATURE_NAMES
 
 from backtesting.research.bucket_sweep import (
+    EXCLUDED_INDICATORS,
     INDICATOR_THEME,
+    SWEEP_INDICATORS,
     THEMES,
     count_theme_combinations,
     theme_combinations,
@@ -250,7 +252,10 @@ def test_themes_partition_every_indicator_exactly_once():
     assigned = [name for names in THEMES.values() for name in names]
 
     assert len(assigned) == len(set(assigned)), "an indicator appears in two themes"
-    assert set(assigned) == set(FEATURE_NAMES)
+    # Themes plus the documented exclusions must still cover FEATURE_NAMES, so a
+    # new indicator with no theme fails here rather than vanishing silently.
+    assert set(assigned) | set(EXCLUDED_INDICATORS) == set(FEATURE_NAMES)
+    assert not (set(assigned) & set(EXCLUDED_INDICATORS))
     assert len(THEMES) == 7
     assert INDICATOR_THEME["z_20"] == "level"
     assert INDICATOR_THEME["mom_10"] == "direction"
@@ -258,20 +263,20 @@ def test_themes_partition_every_indicator_exactly_once():
 
 
 def test_no_combination_mixes_two_indicators_of_one_theme():
-    for combo in theme_combinations(FEATURE_NAMES, max_k=4):
+    for combo in theme_combinations(SWEEP_INDICATORS, max_k=4):
         themes = [INDICATOR_THEME[name] for name in combo]
         assert len(themes) == len(set(themes)), f"{combo} repeats a theme"
 
 
 def test_combination_count_matches_symmetric_polynomial():
-    """Theme sizes [6, 6, 4, 3, 2, 2, 1] -> e1..e4 = 24, 235, 1212, 3544."""
+    """Theme sizes [4, 6, 4, 3, 2, 2, 1] -> e1..e4 = 22, 199, 958, 2644."""
     per_k = {k: 0 for k in range(1, 5)}
-    for combo in theme_combinations(FEATURE_NAMES, max_k=4):
+    for combo in theme_combinations(SWEEP_INDICATORS, max_k=4):
         per_k[len(combo)] += 1
 
-    assert per_k == {1: 24, 2: 235, 3: 1212, 4: 3544}
-    assert sum(per_k.values()) == 5015
-    assert count_theme_combinations(FEATURE_NAMES, max_k=4) == 5015
+    assert per_k == {1: 22, 2: 199, 3: 958, 4: 2644}
+    assert sum(per_k.values()) == 3823
+    assert count_theme_combinations(SWEEP_INDICATORS, max_k=4) == 3823
 
 
 def test_combinations_are_unordered_and_unique():

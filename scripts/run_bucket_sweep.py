@@ -43,9 +43,9 @@ sys.path.insert(0, str(ROOT))  # the offline `backtesting` package lives at repo
 
 from crudewatch.data_preparation import build_all  # noqa: E402
 from crudewatch.infra import load_raw  # noqa: E402
-from crudewatch.research.features import FEATURE_NAMES  # noqa: E402
 from backtesting.research.bucket_sweep import (  # noqa: E402
     HORIZONS,
+    SWEEP_INDICATORS,
     THEMES,
     InsufficientData,
     count_theme_combinations,
@@ -98,8 +98,8 @@ def validate(args: argparse.Namespace) -> None:
     if args.max_k > 4 and not args.force:
         cells = 0
         for k in range(1, args.max_k + 1):
-            n_k = (count_theme_combinations(FEATURE_NAMES, k)
-                   - count_theme_combinations(FEATURE_NAMES, k - 1))
+            n_k = (count_theme_combinations(SWEEP_INDICATORS, k)
+                   - count_theme_combinations(SWEEP_INDICATORS, k - 1))
             cells += n_k * args.n_buckets**k
         raise SystemExit(
             f"--max-k {args.max_k} would produce {cells:,} cells per family. "

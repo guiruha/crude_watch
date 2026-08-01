@@ -156,6 +156,22 @@ def _agree_mag(row, cal, feat, dir_px):
     return abs(signed) if s == dir_px else 0.0
 
 
+def _signed_mag(row, cal, feat):
+    """Ungated magnitude of ``feat``'s signed percentile, in ``[0, 1]``.
+
+    Same quantity :func:`_agree_mag` returns, minus the agreement gate. Used
+    where a feature carries an *unconditional* relationship to the forward
+    outcome — gating such a feature on agreement with the level-implied
+    reversion direction discards roughly half its information and drives its
+    fitted weight to zero. See the bucket-sweep findings report.
+    """
+    val = row.get(feat, np.nan)
+    if val != val:
+        return 0.0
+    p = percentile(cal.ecdf.get(feat, np.array([])), float(val))
+    return abs(2.0 * p - 1.0)
+
+
 def _mag_ecdf(row, cal, ecdf_key, src, neg=False, invert=False):
     val = row.get(src, np.nan)
     if val != val:
@@ -184,19 +200,27 @@ TREND_TERMS: dict = {
 
 RANGE_TERMS.update({
     "macd_div_term": lambda b, row, cal, level, direction: _agree_mag(row, cal, "macd_div", _dir_px_range(level)),
-    "rsi_div_term": lambda b, row, cal, level, direction: _agree_mag(row, cal, "rsi_div_14", _dir_px_range(level)),
+    # Ungated on purpose: the bucket sweep found rsi_div_14 monotone in bucket at
+    # all seven horizons in three families with a fully consistent sign, i.e. an
+    # unconditional relationship. Gating it on the level-implied reversion
+    # direction (as macd_div_term still is) discarded that and fitted to ~0.
+    "rsi_div_term": lambda b, row, cal, level, direction: _signed_mag(row, cal, "rsi_div_14"),
     "mom_decel_term": lambda b, row, cal, level, direction: _mag_ecdf(row, cal, "neg_mom_decel_10", neg=True, src="mom_decel_10"),
     "er_drop_term": lambda b, row, cal, level, direction: _mag_ecdf(row, cal, "neg_er_drop_20", neg=True, src="er_drop_20"),
-    "autocorr_term": lambda b, row, cal, level, direction: _mag_ecdf(row, cal, "autocorr_20", invert=True, src="autocorr_20"),
 })
 TREND_TERMS.update({
     "ema_align_term": lambda b, row, cal, level, direction: _agree_mag(row, cal, "ema_align", _dir_px_trend(direction)),
     "mom10_term": lambda b, row, cal, level, direction: _agree_mag(row, cal, "mom_10", _dir_px_trend(direction)),
-    "r2_term": lambda b, row, cal, level, direction: _clip01(row.get("r2_20", np.nan)) if row.get("r2_20", np.nan) == row.get("r2_20", np.nan) else 0.0,
     "dirpers_term": lambda b, row, cal, level, direction: _clip01(row.get("dir_persistence_20", np.nan)) if row.get("dir_persistence_20", np.nan) == row.get("dir_persistence_20", np.nan) else 0.0,
 })
-RANGE_TERM_KEYS = (*RANGE_TERM_KEYS, "macd_div_term", "rsi_div_term", "mom_decel_term", "er_drop_term", "autocorr_term")
-TREND_TERM_KEYS = (*TREND_TERM_KEYS, "ema_align_term", "mom10_term", "r2_term", "dirpers_term")
+# Retired 2026-08-01 after the bucket sweep: autocorr_20 ordered forward outcomes
+# in only 17.9% of 56 family x horizon triplets and r2_20 in 23.2%, both *below*
+# the 33% expected by chance, while carrying non-zero fitted weight. Removed
+# rather than left at zero so the weight search cannot re-fit noise into them.
+RETIRED_TERM_KEYS: tuple[str, ...] = ("autocorr_term", "r2_term")
+
+RANGE_TERM_KEYS = (*RANGE_TERM_KEYS, "macd_div_term", "rsi_div_term", "mom_decel_term", "er_drop_term")
+TREND_TERM_KEYS = (*TREND_TERM_KEYS, "ema_align_term", "mom10_term", "dirpers_term")
 
 
 def _range_opportunity(
