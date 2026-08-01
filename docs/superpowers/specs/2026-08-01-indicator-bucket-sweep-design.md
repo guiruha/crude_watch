@@ -1,7 +1,7 @@
 # Indicator Bucket Sweep — Design
 
 **Date:** 2026-08-01
-**Status:** Approved, pending implementation plan
+**Status:** Implemented on branch `indicator-bucket-sweep` (160 tests passing)
 
 ## Purpose
 
@@ -35,7 +35,7 @@ input is point-in-time.
 ## No look-ahead — the governing constraint
 
 Every quantity that determines a row's bucket must be computable from
-information available strictly before that row's date. Three separate places
+information available strictly before that row's date. Four separate places
 could leak, and each is closed explicitly:
 
 1. **Features** — as-of `t` by construction (`crudewatch.research.features`
@@ -47,9 +47,17 @@ could leak, and each is closed explicitly:
 3. **Bucket cutoffs** — **expanding-window quantiles over strictly prior dates**
    (see below). This is the one that a naive implementation gets wrong, because
    the obvious `panel[col].quantile(1/3)` silently uses the whole history.
+4. **The complete-case filter itself.** Dropping a row because its *forward*
+   columns are NaN removes it from the pooled prior-history quantile pool — and
+   whether a row has a valid `fwd_20` depends on data 20 bars later. A contract
+   expiring near date `d` would therefore change other contracts' cutoffs at
+   `d`. Bucketing runs on the **feature**-complete panel; only the sweep uses
+   the forward-complete subset. Guarded by a staggered-contract-tail test.
 
-The binding test for all three: appending future bars to a panel must leave
-every already-computed bucket code byte-identical.
+The binding test for the first three: appending future bars to a panel must
+leave every already-computed bucket code byte-identical. The fourth needs its
+own test, because a panel whose contracts all share a date range cannot expose
+it — the guard extends one contract's tail and asserts earlier buckets hold.
 
 ### Point-in-time cutoffs
 
@@ -177,14 +185,18 @@ data workbook present.
 1. `load_raw` → `build_all` → select the family frame.
 2. `add_features` → the 24 continuous indicator columns (all as-of `t`).
 3. `add_forward_returns(horizons=(1, 2, 3, 5, 10, 15, 20))` → `fwd_1 … fwd_20`.
-4. **Complete-case filter** — drop any row with a NaN in the 24 indicator
-   columns or the 7 forward columns.
+4. **Feature-complete filter** — drop rows with a NaN in any of the 24 indicator
+   columns. Forward columns are deliberately *not* filtered yet: doing so here
+   would let a contract's expiry date influence other contracts' cutoffs.
 5. **Point-in-time bucketing** — sort by date, compute expanding quantile edges
    from strictly prior dates, drop the `min_history` warmup, assign codes.
-6. **Sweep** — per combination, one `groupby(code, observed=True, sort=False)`
+   Rows that cannot be coded (`MISSING_CODE`) are dropped.
+6. **Forward-complete intersection** — now drop rows with a NaN in any of the 7
+   forward columns, keeping `codes` and the panel aligned on identical labels.
+7. **Sweep** — per combination, one `groupby(code, observed=True, sort=False)`
    aggregating all 7 forward columns at once. Keep cells with `n ≥ min_samples`.
-7. **Write** — `<family>.parquet`, `<family>_cutoffs.parquet` and
-   `<family>_cutoffs_latest.csv`, written as the family completes.
+8. **Write** — `<family>.parquet`, `<family>_cutoffs.parquet` and
+   `<family>_cutoffs_latest.csv`, written atomically as the family completes.
 
 ### Forward outcome definition
 
@@ -224,7 +236,7 @@ calibration, and `n` is reported per cell precisely so it is visible.
 | `family` | contract family |
 | `k` | number of indicators in the combination |
 | `themes` | `\|`-joined theme names, aligned to `indicators` |
-| `indicators` | `\|`-joined indicator names, lexicographic |
+| `indicators` | `\|`-joined indicator names, in theme-group order (aligned to `themes`/`buckets`, not lexicographic) |
 | `buckets` | `\|`-joined bucket labels (`low`/`mid`/`high`), aligned to `indicators` |
 | `horizon` | 1, 2, 3, 5, 10, 15 or 20 |
 | `n` | rows in the cell |
@@ -255,8 +267,10 @@ Anything promising still needs out-of-sample confirmation on held-out dates.
 - Family with fewer than `min_history` rows total → warn and skip; no date has
   enough prior history to bucket.
 - Indicator with non-increasing edges on a given date (constant over the prior
-  window) → those rows get the sentinel code and are excluded from that
-  indicator's combinations, rather than collapsed into a fake bucket.
+  window), or a NaN reading → the row gets `MISSING_CODE` rather than a
+  fabricated bucket. `run_family` then drops such rows from **all** combinations
+  (complete-case, per "Why complete-case" above); `sweep` independently excludes
+  sentinel rows from any combination naming that indicator.
 - `--max-k > 4` → refuse unless `--force`, reporting the resulting cell count.
 - Parquet written per family on completion; `--resume` skips families already on
   disk.
@@ -296,6 +310,7 @@ Anything promising still needs out-of-sample confirmation on held-out dates.
 | Themes | 7 themes, at most one indicator each per combination | Kills near-duplicate pairings; cuts cells by ~65% |
 | Cutoffs | Per-family **expanding quantiles over strictly prior dates** | No look-ahead; a bucket means what was knowable at the time |
 | Warmup | `--min-history`, default 2000 pooled rows | Early dates lack the history for meaningful quantiles |
+| Buckets | Terciles only; `--n-buckets` other than 3 is refused | `BUCKET_LABELS` is a fixed ("low","mid","high") tuple |
 | Anchor | `close[t+h] − open[t+1]` | Matches repo's executable basis |
 | Families | All 8, reported separately | Preserves per-family scale and behaviour |
 | Output | Full stats, parquet, `n ≥ 30` | Keeps size sane, drops noise-only cells |
