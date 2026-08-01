@@ -603,8 +603,8 @@ def test_combinations_are_unordered_and_unique():
 
     combos = list(theme_combinations(small, max_k=3, theme_of=theme_of))
 
-    # (1 + 2x)(1 + x)(1 + x) = 1 + 4x + 5x^2 + 2x^3
-    assert len(combos) == 4 + 5 + 2 == 11
+    # (1 + 2x)(1 + x)(1 + x) = 1 + 4x + 5x^2 + 2x^3 -> e1=4, e2=5, e3=2
+    assert len(combos) == 11
     assert len(set(combos)) == len(combos)
     assert ("a1", "a2") not in set(combos)      # same theme, never emitted
     assert ("a1", "b1") in set(combos)
@@ -623,7 +623,7 @@ Add to the imports at the top of `backtesting/research/bucket_sweep.py`:
 
 ```python
 from collections.abc import Callable, Iterator, Mapping, Sequence
-from itertools import combinations
+from itertools import combinations, product
 ```
 
 (Replace whatever `collections.abc` import line is currently there.)
@@ -679,19 +679,7 @@ def theme_combinations(
 
     for k in range(1, max_k + 1):
         for theme_group in combinations(grouped, k):
-            members = [names for _, names in theme_group]
-            yield from _product(members)
-
-
-def _product(members: list[list[str]]) -> Iterator[tuple[str, ...]]:
-    """One indicator from each of ``members``, in order (a small itertools.product)."""
-    if not members:
-        yield ()
-        return
-    head, *rest = members
-    for name in head:
-        for tail in _product(rest):
-            yield (name, *tail)
+            yield from product(*(names for _, names in theme_group))
 
 
 def count_theme_combinations(
