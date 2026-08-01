@@ -58,6 +58,16 @@ def expanding_cutoffs(
     ordered = panel.sort_values(date_col, kind="mergesort")
     dates = ordered[date_col].to_numpy()
 
+    if len(dates) == 0:
+        return pd.DataFrame(
+            {
+                "date": pd.Series(dtype=panel[date_col].dtype),
+                "indicator": pd.Series(dtype=object),
+                "edge_index": pd.Series(dtype=int),
+                "value": pd.Series(dtype=float),
+            }
+        )
+
     # Index of the first row of each date, and the dates themselves.
     is_first = np.r_[True, dates[1:] != dates[:-1]]
     first_idx = np.flatnonzero(is_first)

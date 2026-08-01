@@ -47,7 +47,10 @@ def test_cutoffs_are_nan_inside_the_warmup():
 
 
 def test_same_date_rows_do_not_influence_each_other():
-    """Two contracts share every date; changing one must not move the other's edges."""
+    """Two contracts share every date; changing one must not move same-date edges,
+    but it must still move edges on strictly later dates once that row becomes
+    prior history — otherwise this test would pass even under partial leakage.
+    """
     a = _dated([5, 1, 9, 3, 7, 2, 8, 4, 6, 0], contract="A")
     b = _dated([4, 2, 8, 1, 6, 3, 9, 5, 7, 1], contract="B")
     panel = pd.concat([a, b], ignore_index=True)
@@ -55,11 +58,30 @@ def test_same_date_rows_do_not_influence_each_other():
     base = expanding_cutoffs(panel, ["ind"], n_buckets=3, min_history=4)
 
     bumped = panel.copy()
-    last_date = panel["date"].max()
-    bumped.loc[(bumped["contract"] == "B") & (bumped["date"] == last_date), "ind"] = 999.0
+    mid_date = panel["date"].sort_values().unique()[len(panel["date"].unique()) // 2]
+    bumped.loc[(bumped["contract"] == "B") & (bumped["date"] == mid_date), "ind"] = 999.0
     after = expanding_cutoffs(bumped, ["ind"], n_buckets=3, min_history=4)
 
-    pd.testing.assert_frame_equal(base, after)
+    # Same-day rows must not influence their own date's edges.
+    same_day_base = base[base["date"] == mid_date].reset_index(drop=True)
+    same_day_after = after[after["date"] == mid_date].reset_index(drop=True)
+    pd.testing.assert_frame_equal(same_day_base, same_day_after)
+
+    # But the mutated row must enter the prior-history pool for later dates,
+    # proving the test is actually sensitive to the data.
+    later_base = base[base["date"] > mid_date].reset_index(drop=True)
+    later_after = after[after["date"] > mid_date].reset_index(drop=True)
+    assert not later_base["value"].equals(later_after["value"])
+
+
+def test_empty_panel_returns_empty_frame():
+    """An empty panel must not crash; it should yield an empty tidy frame."""
+    panel = pd.DataFrame({"date": pd.Series(dtype="datetime64[ns]"), "ind": pd.Series(dtype=float)})
+
+    cuts = expanding_cutoffs(panel, ["ind"], n_buckets=3, min_history=4)
+
+    assert list(cuts.columns) == ["date", "indicator", "edge_index", "value"]
+    assert len(cuts) == 0
 
 
 def test_module_constants():
