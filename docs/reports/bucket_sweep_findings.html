@@ -433,7 +433,109 @@ not because the indicator is uninformative.</em></p>
   this run demonstrated. Deep conditioning here buys narrower cells, not more information.</p>
 </div>
 
-<h2><span class="num">06</span>What this study cannot tell you</h2>
+<h2><span class="num">06</span>Which indicators to combine</h2>
+
+<div class="card verdict">
+  <h3>First: two of your 24 indicators are the same indicator</h3>
+  <p><code>pctb_10_1_5</code> is an <strong>exact affine transform</strong> of
+  <code>z_10</code>, and <code>pctb_20_2</code> of <code>z_20</code>. Bollinger %B
+  expands to <code>(z + k) / 2k</code> — so with quantile bucketing, which is
+  rank-based, they produce <em>byte-identical</em> bucket codes. Verified both
+  algebraically (rank correlation 1.0000000000) and in the output.</p>
+  <p style="margin-bottom:0">They cost ~8% of the run for zero information. Theme
+  exclusivity saved you from ever pairing them — they both sit in <code>level</code> —
+  but they should come out of <code>FEATURES</code>. The <code>level</code> theme has
+  six entries and four distinct measurements.</p>
+</div>
+
+<p>A pair earns its place only if the second indicator keeps a consistent gradient
+<em>inside every bucket</em> of the first — otherwise it is re-slicing one effect, not
+adding a second. Across 11,970 pair × horizon cells, 18.0% clear that bar against ~6%
+expected by chance. Requiring it in <strong>both</strong> directions at <strong>all
+seven</strong> horizons with n ≥ 100 leaves just eight pairs:</p>
+
+<div class="scroll"><table>
+  <thead><tr><th>Family</th><th>Pair</th><th>Themes</th><th>Lift vs best single</th><th>Min n</th></tr></thead>
+  <tbody>
+    <tr><td>outrights</td><td><code>variance_ratio_5</code> × <code>dir_persistence_20</code></td><td>regime × quality</td><td class="num">3.0×</td><td class="num">1,782</td></tr>
+    <tr><td>quarterly</td><td><code>vol_ratio</code> × <code>variance_ratio_5</code></td><td>volatility × regime</td><td class="num">2.1×</td><td class="num">1,354</td></tr>
+    <tr><td>cracks</td><td><code>z_20</code> × <code>dir_persistence_20</code></td><td>level × quality</td><td class="num">1.8×</td><td class="num">291</td></tr>
+    <tr><td>quarterly</td><td><code>rsi_div_14</code> × <code>vol_ratio</code></td><td>exhaustion × volatility</td><td class="num">1.7×</td><td class="num">2,317</td></tr>
+    <tr><td>quarterly</td><td><code>rsi_div_14</code> × <code>variance_ratio_5</code></td><td>exhaustion × regime</td><td class="num">1.6×</td><td class="num">1,348</td></tr>
+    <tr><td>brent_wti</td><td><code>z_10</code> × <code>ema_align</code></td><td>level × direction</td><td class="num">5.4×</td><td class="num">125</td></tr>
+  </tbody>
+</table></div>
+<p style="color:var(--subtext);font-size:13px;margin-top:-4px">The two duplicate-driven
+rows are collapsed. <code>brent_wti</code>'s 5.4× rests on n=125 in the thinnest cell
+and sits in the family whose monotone rate (35.7%) is indistinguishable from chance —
+treat it as noise, not the best result.</p>
+
+<h3>The recommendation: the <code>quarterly</code> reversion triangle</h3>
+
+<p>Three of the eight pairs are the same three indicators —
+<code>rsi_div_14</code>, <code>vol_ratio</code>, <code>variance_ratio_5</code> — pairwise
+robust in <code>quarterly</code>. Exhaustion × volatility × regime is a coherent
+mean-reversion story, not three unrelated survivors, and it is the family that already
+carries fitted weights.</p>
+
+<figure>
+  <div class="legend">
+    <span><i style="background:#0C7A57"></i>forward move up (points)</span>
+    <span><i style="background:#3A4441"></i>flat</span>
+    <span><i style="background:#B0393D"></i>forward move down</span>
+  </div>
+  <div class="scroll"><table style="min-width:460px">
+    <thead><tr><th><code>rsi_div_14</code> ↓ &nbsp;/&nbsp; <code>vol_ratio</code> →</th>
+      <th>low</th><th>mid</th><th>high</th></tr></thead>
+    <tbody>
+      <tr><td>low</td>
+        <td class="num" style="background:rgba(16,185,129,.30)">+0.2396</td>
+        <td class="num" style="background:rgba(16,185,129,.16)">+0.1147</td>
+        <td class="num" style="background:rgba(16,185,129,.04)">+0.0113</td></tr>
+      <tr><td>mid</td>
+        <td class="num" style="background:rgba(16,185,129,.10)">+0.0714</td>
+        <td class="num" style="background:rgba(139,150,145,.14)">−0.0041</td>
+        <td class="num" style="background:rgba(229,72,77,.17)">−0.1288</td></tr>
+      <tr><td>high</td>
+        <td class="num" style="background:rgba(229,72,77,.14)">−0.1080</td>
+        <td class="num" style="background:rgba(229,72,77,.14)">−0.1040</td>
+        <td class="num" style="background:rgba(229,72,77,.32)">−0.2514</td></tr>
+    </tbody>
+  </table></div>
+  <figcaption>Mean 20-bar forward move in points, <code>quarterly</code>. Every row
+  falls left→right and every column falls top→bottom — a genuine bivariate gradient.
+  Corner spread <strong>0.491 pts</strong> against <strong>0.266</strong> for
+  <code>rsi_div_14</code> alone, so the second indicator nearly doubles the separation.
+  Cell samples run 2,317–3,600, all well clear of the floor. Cost stub for
+  <code>quarterly</code> is 0.010 pts.</figcaption>
+</figure>
+
+<p><code>rsi_div_14</code> × <code>variance_ratio_5</code> gives the same picture
+(+0.2098 → −0.2095, monotone both ways), which is what you want to see: the two
+partners of the same anchor tell a consistent story rather than each finding its own
+private structure.</p>
+
+<h3>What to put in the dashboard</h3>
+<ol>
+  <li><strong>Remove <code>pctb_10_1_5</code> and <code>pctb_20_2</code></strong> from
+  <code>FEATURES</code>. Free, and it stops the UI implying confirmation between two
+  copies of one measurement.</li>
+  <li><strong>Anchor on <code>rsi_div_14</code></strong> — the only indicator with a
+  monotone gradient at every horizon in three independent families — after settling the
+  sign question in §03.</li>
+  <li><strong>Pair it with <code>vol_ratio</code>, and read <code>variance_ratio_5</code>
+  as corroboration.</strong> Both partners are already scored terms
+  (<code>vol_term</code>, <code>autocorr_term</code> family), so this is a weighting
+  change, not new machinery.</li>
+  <li><strong>Keep it to two.</strong> Nothing at k=3 or k=4 survived. The pair is the
+  useful unit here.</li>
+  <li><strong>Do not carry this to other families.</strong> The robust pairs differ per
+  family — <code>outrights</code> wants regime × quality, <code>cracks</code> wants
+  level × quality. And <code>vol_ratio</code> flips sign between families, so it must be
+  fitted per family, never shared.</li>
+</ol>
+
+<h2><span class="num">07</span>What this study cannot tell you</h2>
 
 <ul>
   <li><strong>It is in-sample by selection.</strong> Every input is point-in-time — the
