@@ -112,7 +112,9 @@ def bucketize(
     (0 = low, 1 = mid, 2 = high for terciles). Rows whose date has no usable
     edges — still inside the ``min_history`` warmup, or a prior window so
     degenerate the edges are not strictly increasing — get ``MISSING_CODE``
-    rather than a fabricated bucket.
+    rather than a fabricated bucket. Rows whose own indicator value is NaN
+    also get ``MISSING_CODE``, since ``value >= edge`` is always False for
+    NaN and would otherwise be silently coded as bucket 0 ("low").
 
     Returns ``(codes, cutoffs)``; ``codes`` is indexed like the date-sorted
     ``panel`` so it can be aligned straight back onto it.
@@ -131,7 +133,8 @@ def bucketize(
             for j in range(n_buckets - 1)
         ]
 
-        usable = ~np.isnan(edges[0])
+        usable = ~np.isnan(values)
+        usable &= ~np.isnan(edges[0])
         for j in range(1, n_buckets - 1):
             usable &= ~np.isnan(edges[j])
             usable &= edges[j] > edges[j - 1]  # strictly increasing, else no real split

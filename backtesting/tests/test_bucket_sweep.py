@@ -129,16 +129,37 @@ def test_bucketize_assigns_codes_against_prior_date_edges():
     assert codes["ind"].iloc[6] == 2
 
 
-def test_bucketize_ignores_forward_outcome_columns():
-    """Perturbing outcomes never changes bucket codes — outcomes cannot leak in."""
+def test_bucketize_is_column_selective():
+    """bucketize only reads the columns named in `indicators`; other columns —
+    including forward-outcome columns — cannot influence the result no matter
+    their contents, because they are never looked up by name.
+    """
     rng = np.random.default_rng(1)
     panel = _dated(rng.normal(size=200))
+    panel["fwd_1"] = rng.normal(size=200) * 1000.0
     codes_a, _ = bucketize(panel, ["ind"], n_buckets=3, min_history=20)
 
-    panel["fwd_1"] = rng.normal(size=200) * 1000.0
-    codes_b, _ = bucketize(panel, ["ind"], n_buckets=3, min_history=20)
+    perturbed = panel.copy()
+    perturbed["fwd_1"] = rng.normal(size=200) * 1000.0
+    codes_b, _ = bucketize(perturbed, ["ind"], n_buckets=3, min_history=20)
 
     pd.testing.assert_frame_equal(codes_a, codes_b)
+
+
+def test_bucketize_marks_nan_indicator_value_as_missing():
+    """A NaN reading in the row's own indicator value must yield MISSING_CODE,
+    not a fabricated bucket. `value >= edge` is False for every edge when
+    value is NaN, so a naive implementation that only checks the edges for
+    NaN accumulates code 0 ("low") for a NaN reading instead of MISSING_CODE.
+    """
+    rng = np.random.default_rng(7)
+    values = rng.normal(size=30)
+    values[25] = np.nan  # well past warmup (min_history=20)
+    panel = _dated(values)
+
+    codes, _ = bucketize(panel, ["ind"], n_buckets=3, min_history=20)
+
+    assert codes["ind"].iloc[25] == MISSING_CODE
 
 
 def test_bucketize_marks_degenerate_edges_as_missing():
