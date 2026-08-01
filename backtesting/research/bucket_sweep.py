@@ -147,3 +147,74 @@ def bucketize(
 
     codes = pd.DataFrame(code_cols, index=ordered.index)
     return codes, cutoffs
+
+
+RESULT_COLUMNS: tuple[str, ...] = (
+    "k", "themes", "indicators", "buckets", "horizon",
+    "n", "mean", "median", "std", "hit_rate", "t_stat",
+)
+
+
+def decode_cell(cell: int, k: int, n_buckets: int) -> str:
+    """Turn a joint integer cell code back into ``|``-joined bucket labels.
+
+    Inverse of the mixed-radix encoding ``b0 + n*b1 + n^2*b2 + ...`` used by the
+    sweep, so position ``i`` of the result is the bucket of the ``i``-th
+    indicator of the combination.
+    """
+    labels = [BUCKET_LABELS[(cell // n_buckets**i) % n_buckets] for i in range(k)]
+    return "|".join(labels)
+
+
+def cell_stats(
+    data: pd.DataFrame,
+    code: pd.Series,
+    horizons: Sequence[int],
+    min_samples: int,
+) -> pd.DataFrame:
+    """Per-cell forward-outcome statistics for one combination, all horizons.
+
+    ``data`` holds ``fwd_{h}`` (forward price difference) and ``hit_{h}``
+    (1.0 where ``fwd_{h} > 0``) columns; ``code`` is the joint integer cell per
+    row. Cells with fewer than ``min_samples`` rows are omitted entirely rather
+    than emitted with NaN statistics.
+    """
+    agg_map: dict[str, list[str]] = {}
+    for h in horizons:
+        agg_map[f"fwd_{h}"] = ["count", "mean", "median", "std"]
+        agg_map[f"hit_{h}"] = ["mean"]
+
+    desc = data.groupby(code, observed=True, sort=False).agg(agg_map)
+
+    frames: list[pd.DataFrame] = []
+    for h in horizons:
+        keep = desc[(f"fwd_{h}", "count")] >= min_samples
+        if not keep.any():
+            continue
+        kept = desc.loc[keep]
+        n = kept[(f"fwd_{h}", "count")].to_numpy(dtype=float)
+        mean = kept[(f"fwd_{h}", "mean")].to_numpy(dtype=float)
+        std = kept[(f"fwd_{h}", "std")].to_numpy(dtype=float)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            t_stat = mean / (std / np.sqrt(n))
+        frames.append(
+            pd.DataFrame(
+                {
+                    "cell": kept.index.to_numpy(),
+                    "horizon": h,
+                    "n": n.astype(np.int64),
+                    "mean": mean,
+                    "median": kept[(f"fwd_{h}", "median")].to_numpy(dtype=float),
+                    "std": std,
+                    "hit_rate": kept[(f"hit_{h}", "mean")].to_numpy(dtype=float),
+                    "t_stat": t_stat,
+                }
+            )
+        )
+
+    if not frames:
+        return pd.DataFrame(
+            {c: pd.Series(dtype="float64") for c in
+             ("cell", "horizon", "n", "mean", "median", "std", "hit_rate", "t_stat")}
+        )
+    return pd.concat(frames, ignore_index=True)
