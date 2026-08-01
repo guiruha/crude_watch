@@ -26,7 +26,7 @@ backtesting/          # OFFLINE only — kept out of src, run in place from the 
   backtest/           # legacy long/flat indicator backtests + HTML reports
   research/           # walk-forward evaluation, regime-gated backtest, strategy simulation + reports
   tests/              # tests for the offline backtesting/research code
-scripts/              # run_backtests.py / run_research.py / run_strategy.py (offline report generators)
+scripts/              # run_backtests.py / run_research.py / run_strategy.py / run_bucket_sweep.py (offline report generators)
 ```
 
 ## Published contract families
@@ -45,6 +45,34 @@ family from the raw feed:
 
 The **Contract Exploration** screen picks a family and a contract, then charts
 its price history with summary stats and the underlying table.
+
+## Indicator bucket sweep (offline)
+
+Descriptive study of what followed each *joint indicator state*. Buckets all 24
+indicators into terciles, forms every combination of up to four of them, and
+reports forward price differences (`close[t+h] − open[t+1]`, for
+h = 1, 2, 3, 5, 10, 15, 20) per bucket cell.
+
+Indicators are grouped into 7 themes (level, direction, exhaustion, regime,
+quality, oscillator, volatility) and a combination takes **at most one indicator
+per theme** — so themes are crossed against each other, but `z_20` is never
+paired with `z_50`. That is 5,015 combinations and 321,975 cells per family.
+
+Cutoffs are **expanding quantiles over strictly prior dates**, so a row's bucket
+never depends on its own date or any later one — "low" means low relative to
+what was knowable at the time.
+
+```bash
+uv run python scripts/run_bucket_sweep.py --families flies --max-k 2   # quick look
+uv run python scripts/run_bucket_sweep.py --jobs 4 --resume            # full run
+```
+
+Output lands in `docs/reports/bucket_sweep/`. A full `--max-k 4` run is ~322k
+cells per family and takes hours — use `--jobs` and `--resume`.
+
+> Every input is point-in-time, but cells are picked by inspection, so `t_stat`
+> is still selection-biased and thousands of cells clear |t| > 3 by chance.
+> Rank candidates with it; confirm them on held-out dates.
 
 ## Setup
 
