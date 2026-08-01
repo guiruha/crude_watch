@@ -118,7 +118,11 @@ def bucketize(
     degenerate the edges are not strictly increasing — get ``MISSING_CODE``
     rather than a fabricated bucket. Rows whose own indicator value is NaN
     also get ``MISSING_CODE``, since ``value >= edge`` is always False for
-    NaN and would otherwise be silently coded as bucket 0 ("low").
+    NaN and would otherwise be silently coded as bucket 0 ("low"). This
+    exclusion is per indicator, one column at a time; callers that need a
+    single complete-case sample across every indicator (as ``run_family``
+    does) drop rows with any ``MISSING_CODE`` from all combinations, not just
+    that one indicator's.
 
     Returns ``(codes, cutoffs)``; ``codes`` is indexed like the date-sorted
     ``panel`` so it can be aligned straight back onto it.
@@ -328,11 +332,12 @@ def sweep(
 
     for combo in theme_combinations(names, max_k, theme_of):
         k = len(combo)
+        valid = (codes[list(combo)] != MISSING_CODE).all(axis=1)
         code = codes[combo[0]].astype(np.int32)
         for i, col in enumerate(combo[1:], start=1):
             code = code + codes[col].astype(np.int32) * (n_buckets**i)
 
-        stats = cell_stats(data, code, horizons, min_samples)
+        stats = cell_stats(data.loc[valid], code.loc[valid], horizons, min_samples)
         done += 1
         if progress is not None:
             progress(done, total)
@@ -374,28 +379,43 @@ def run_family(
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Full sweep for one contract family: features -> outcomes -> buckets -> cells.
 
-    Rows with a NaN in any indicator or any forward column are dropped up front,
-    then rows the point-in-time bucketing could not code (quantile warmup or
-    degenerate edges) are dropped too. What survives is a single complete-case
-    panel, so every combination is measured on an identical sample and cells are
-    comparable across combinations.
+    Bucketing runs on the feature-complete panel (every indicator non-NaN),
+    pooling as much prior history as possible into each date's quantile
+    cutoffs. Forward columns must NOT gate that pool: whether row ``r`` has a
+    valid ``fwd_20`` depends on data 20 bars after ``r``, so filtering on it
+    before bucketing would let a date's edges depend on data after that date.
+    Only once cutoffs and codes are fixed is the panel narrowed to the
+    forward-complete subset the sweep actually runs on. What survives is a
+    single complete-case panel for the sweep, so every combination is
+    measured on an identical sample and cells are comparable across
+    combinations.
     """
     featured = add_features(frame)
     full = add_forward_returns(featured, horizons=tuple(horizons))
 
     fwd_cols = [f"fwd_{h}" for h in horizons]
-    panel = full.dropna(subset=list(FEATURE_NAMES) + fwd_cols)
+    featured_ok = full.dropna(subset=list(FEATURE_NAMES))
 
-    if len(panel) < min_history:
+    if len(featured_ok) < min_history:
         raise InsufficientData(
-            f"{family}: {len(panel)} complete-case rows, fewer than the "
-            f"min_history={min_history} needed before any date can be bucketed"
+            f"{family}: {len(featured_ok)} feature-complete rows, fewer than "
+            f"the min_history={min_history} needed before any date can be "
+            f"bucketed"
         )
 
-    codes, cutoffs = bucketize(panel, FEATURE_NAMES, n_buckets, min_history)
+    codes, cutoffs = bucketize(featured_ok, FEATURE_NAMES, n_buckets, min_history)
     codeable = (codes != MISSING_CODE).all(axis=1)
     codes = codes.loc[codeable]
-    panel = panel.loc[codes.index]
+    panel = featured_ok.loc[codes.index].dropna(subset=fwd_cols)
+    codes = codes.loc[panel.index]
+    # Not an assert: a silent misalignment here would pair every row's buckets
+    # with a different row's forward outcomes, corrupting every statistic while
+    # still looking structurally valid. This must hold under ``python -O`` too.
+    if not codes.index.equals(panel.index):
+        raise RuntimeError(
+            f"{family}: bucket codes and forward outcomes are misaligned "
+            f"({len(codes)} vs {len(panel)} rows)"
+        )
 
     required = min_samples * n_buckets**max_k
     if len(codes) < required:

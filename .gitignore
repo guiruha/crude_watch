@@ -24,6 +24,7 @@ env/
 # Built datasets / caches
 data/processed/
 *.parquet
+docs/reports/bucket_sweep/
 
 # Test / tooling caches
 .pytest_cache/

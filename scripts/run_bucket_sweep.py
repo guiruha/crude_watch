@@ -65,7 +65,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--families", nargs="+", default=FRAME_NAMES, choices=FRAME_NAMES)
     p.add_argument("--max-k", type=int, default=4, help="combination depth (default 4)")
     p.add_argument("--horizons", nargs="+", type=int, default=list(HORIZONS))
-    p.add_argument("--n-buckets", type=int, default=3, help="buckets per indicator")
+    p.add_argument("--n-buckets", type=int, default=3,
+                   help="buckets per indicator (terciles only -- 3 is the only "
+                        "supported value)")
     p.add_argument("--min-samples", type=int, default=30, help="minimum rows per cell")
     p.add_argument("--min-history", type=int, default=2000,
                    help="prior rows required before a date can be bucketed")
@@ -79,6 +81,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def validate(args: argparse.Namespace) -> None:
     """Fail fast on inputs that would waste hours or blow up the output."""
+    if args.n_buckets != 3:
+        raise SystemExit(
+            f"--n-buckets {args.n_buckets} is not supported: BUCKET_LABELS is a "
+            f"hard-coded ('low', 'mid', 'high') tercile tuple, so bucket labels "
+            f"are only defined for --n-buckets 3."
+        )
     if args.max_k < 1:
         raise SystemExit("--max-k must be at least 1")
     if args.max_k > len(THEMES):
@@ -101,7 +109,7 @@ def validate(args: argparse.Namespace) -> None:
         raise SystemExit(f"Missing raw workbook: {RAW}")
 
 
-def sweep_one(family: str, frame: pd.DataFrame, args: argparse.Namespace):
+def sweep_one(family: str, frame: pd.DataFrame, args: argparse.Namespace, progress=None):
     """Run one family, returning (family, results, cutoffs, error_message)."""
     try:
         results, cutoffs = run_family(
@@ -112,6 +120,7 @@ def sweep_one(family: str, frame: pd.DataFrame, args: argparse.Namespace):
             max_k=args.max_k,
             min_samples=args.min_samples,
             min_history=args.min_history,
+            progress=progress,
         )
     except InsufficientData as exc:
         return family, None, None, str(exc)
@@ -154,6 +163,23 @@ def write_family(out_dir: Path, family: str, results: pd.DataFrame,
     return path
 
 
+def _progress_printer(family: str):
+    """A sparse, single-line ``sweep`` progress callback: updates on ~5% steps."""
+    last_pct: list[int] = [-1]
+
+    def progress(done: int, total: int) -> None:
+        pct = 0 if total == 0 else int(done * 100 / total)
+        pct = (pct // 5) * 5
+        if pct == last_pct[0] and done != total:
+            return
+        last_pct[0] = pct
+        end = "\n" if done == total else ""
+        print(f"\r[run ] {family}: {done:,}/{total:,} combinations ({pct}%)",
+              end=end, flush=True)
+
+    return progress
+
+
 def main(argv: list[str] | None = None) -> None:
     args = parse_args(argv)
     validate(args)
@@ -171,10 +197,13 @@ def main(argv: list[str] | None = None) -> None:
     print(f"Loading raw workbook: {RAW}")
     frames = build_all(load_raw(RAW))
 
-    written: list[Path] = []
     started = time.time()
 
-    def report(family: str, results: pd.DataFrame, path: Path) -> None:
+    def finish(family: str, results, cutoffs, err: str | None) -> None:
+        if err:
+            print(f"[skip] {err}")
+            return
+        path = write_family(args.out_dir, family, results, cutoffs)
         print(f"[done] {family}: {len(results):,} cells -> {path}  "
               f"({time.time() - started:.0f}s elapsed)")
 
@@ -183,31 +212,28 @@ def main(argv: list[str] | None = None) -> None:
             futures = {pool.submit(sweep_one, f, frames[f], args): f for f in families}
             for fut in as_completed(futures):
                 family, results, cutoffs, err = fut.result()
-                if err:
-                    print(f"[skip] {err}")
-                    continue
-                path = write_family(args.out_dir, family, results, cutoffs)
-                written.append(path)
-                report(family, results, path)
+                finish(family, results, cutoffs, err)
     else:
         for family in families:
             print(f"[run ] {family} ...")
-            _, results, cutoffs, err = sweep_one(family, frames[family], args)
-            if err:
-                print(f"[skip] {err}")
-                continue
-            path = write_family(args.out_dir, family, results, cutoffs)
-            written.append(path)
-            report(family, results, path)
+            family, results, cutoffs, err = sweep_one(
+                family, frames[family], args, progress=_progress_printer(family)
+            )
+            finish(family, results, cutoffs, err)
 
-    if not written:
+    # Pool the ranking from every family requested in this invocation, not just
+    # the ones freshly written this run -- otherwise a `--resume` that skips
+    # already-completed families silently ranks only the newly written subset.
+    all_paths = [args.out_dir / f"{f}.parquet" for f in args.families]
+    existing_paths = [p for p in all_paths if p.exists()]
+    if not existing_paths:
         print("No results produced.")
         return
 
     # Loads every family's full results into memory at once (tens of millions of
     # rows at the documented full scale: ~322k cells x 7 horizons x 8 families).
     # A full run wants enough RAM; use --families to batch it if that's tight.
-    pooled = pd.concat([pd.read_parquet(p) for p in written], ignore_index=True)
+    pooled = pd.concat([pd.read_parquet(p) for p in existing_paths], ignore_index=True)
     finite = np.isfinite(pooled["t_stat"])
     n_excluded = int((~finite).sum())
     if n_excluded:

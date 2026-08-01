@@ -369,6 +369,26 @@ def test_sweep_reports_progress_even_when_no_combination_survives():
     assert seen == [(1, 3), (2, 3), (3, 3)]  # a1, b1, then (a1, b1)
 
 
+def test_sweep_excludes_missing_code_rows_instead_of_fabricating_a_high_bucket():
+    """-1 % 3 == 2 in Python, so a naive mixed-radix decode would label
+    MISSING_CODE rows "high" and pool them into a real cell. `sweep` must
+    drop any row where the current combination's indicator is MISSING_CODE
+    before grouping, regardless of what run_family does upstream.
+    """
+    codes = pd.DataFrame({
+        "a1": np.array([MISSING_CODE, MISSING_CODE, 0, 0, 0, 0], dtype=np.int8),
+        "b1": np.zeros(6, dtype=np.int8),
+    })
+    forwards = pd.DataFrame({"fwd_1": [1.0, 2.0, 3.0, -1.0, -2.0, 0.5]})
+
+    out = sweep(codes, forwards, max_k=1, min_samples=1, n_buckets=3,
+                theme_of=_SMALL_THEMES)
+
+    a1 = out[out["indicators"] == "a1"]
+    assert (a1["n"] == 4).all()          # only the 4 non-missing rows
+    assert set(a1["buckets"]) == {"low"}  # never a fabricated "high"
+
+
 def test_sweep_empty_and_nonempty_dtypes_match():
     """The empty-result fallback must type columns exactly like the non-empty
     path (int64 k/horizon/n, object themes/indicators/buckets, float64 for the
@@ -444,6 +464,82 @@ def test_run_family_raises_on_a_thin_panel():
     with pytest.raises(InsufficientData):
         run_family("thin", _synthetic_frame(n_contracts=1, n_rows=130),
                    max_k=4, min_samples=30, n_buckets=3, min_history=2000)
+
+
+def test_run_family_raises_when_codeable_rows_are_too_few_for_the_cell_grid():
+    """The SECOND InsufficientData guard: enough rows to clear min_history and
+    get coded, but too few surviving rows to satisfy
+    ``min_samples * n_buckets**max_k``. Distinct from the thin-panel test
+    above, which trips the FIRST guard (fewer than min_history rows at all).
+    """
+    # min_history=300 is comfortably cleared (~601 feature-complete rows out
+    # of 700), so the FIRST guard passes; but only ~300 rows are left
+    # codeable after the min_history warmup, well short of
+    # min_samples=30 * 3**4 = 2430, so the SECOND guard trips.
+    with pytest.raises(InsufficientData, match="codeable rows after warmup"):
+        run_family("thin_cells", _synthetic_frame(n_contracts=1, n_rows=700),
+                   max_k=4, min_samples=30, n_buckets=3, min_history=300)
+
+
+def _staggered_frame(n_contracts: int = 6, n_rows: int = 400,
+                     short_tail_at: int = 300, extra_rows: int = 0) -> pd.DataFrame:
+    """Like `_synthetic_frame`, but contract C0 ends at ``short_tail_at +
+    extra_rows`` while every OTHER contract always runs the full ``n_rows``.
+    This is the seam `_synthetic_frame` hides: with identical date ranges for
+    every contract, a leak that depends on ONE contract's end date shifting
+    (which changes whether ITS OWN near-tail rows have a valid forward
+    column, and therefore whether they enter the pooled quantile pool used
+    for OTHER contracts' same-date cutoffs) can't show up.
+    """
+    dates = pd.bdate_range("2015-01-01", periods=n_rows)
+    parts = []
+    for c in range(n_contracts):
+        # A per-contract RNG stream, independent of every other contract's
+        # length, so extending C0's tail cannot desync C1..Cn's draws --
+        # otherwise a difference in "later" contract data would be a test
+        # artifact, not the real thing Finding 1 is about.
+        rng = np.random.default_rng(1000 + c)
+        length = short_tail_at + extra_rows if c == 0 else n_rows
+        close = 50.0 + np.cumsum(rng.normal(0, 0.5, size=length))
+        parts.append(
+            pd.DataFrame(
+                {
+                    "date": dates[:length],
+                    "contract": f"C{c}",
+                    "open": close + rng.normal(0, 0.05, size=length),
+                    "close": close,
+                }
+            )
+        )
+    return pd.concat(parts, ignore_index=True)
+
+
+def test_run_family_extending_one_contracts_tail_does_not_change_earlier_buckets():
+    """Look-ahead regression guard with staggered contract end dates.
+
+    C0 originally ends at bar 300; every other contract runs the full 400
+    bars throughout. Extending ONLY C0's own tail (so its near-300 rows gain
+    a valid forward column they didn't have before) must not change any
+    cutoff or bucket-derived result dated at or before bar 300 for the OTHER
+    contracts -- exactly the leak Finding 1 describes: dropping forward-NaN
+    rows before bucketizing lets a date's quantile pool depend on whether a
+    DIFFERENT contract's row (dated even earlier) happened to have data far
+    enough in the future to keep a valid forward column.
+    """
+    base = _staggered_frame(short_tail_at=300, n_rows=400, extra_rows=0)
+    extended = _staggered_frame(short_tail_at=300, n_rows=400, extra_rows=25)
+
+    _, cutoffs_base = run_family(
+        "stagger", base, max_k=1, min_samples=5, n_buckets=3, min_history=150,
+    )
+    _, cutoffs_ext = run_family(
+        "stagger", extended, max_k=1, min_samples=5, n_buckets=3, min_history=150,
+    )
+
+    cutoff_date_max = base[base["contract"] == "C0"]["date"].max()
+    cuts_base = cutoffs_base[cutoffs_base["date"] <= cutoff_date_max].reset_index(drop=True)
+    cuts_ext = cutoffs_ext[cutoffs_ext["date"] <= cutoff_date_max].reset_index(drop=True)
+    pd.testing.assert_frame_equal(cuts_base, cuts_ext)
 
 
 def test_run_family_stats_are_paired_with_the_right_rows():
