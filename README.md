@@ -68,7 +68,10 @@ uv run python scripts/run_bucket_sweep.py --jobs 4 --resume            # full ru
 ```
 
 Output lands in `docs/reports/bucket_sweep/`. A full `--max-k 4` run is ~322k
-cells per family and takes hours — use `--jobs` and `--resume`.
+cells per family and takes hours — use `--jobs` and `--resume`. The pooled
+`top_cells.csv` step holds every family's full results in memory at once, so a
+full 8-family run wants enough RAM (or run families in batches with
+`--families`).
 
 > Every input is point-in-time, but cells are picked by inspection, so `t_stat`
 > is still selection-biased and thousands of cells clear |t| > 3 by chance.

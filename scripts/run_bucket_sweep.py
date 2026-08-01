@@ -27,7 +27,9 @@ on held-out dates before believing it.
 from __future__ import annotations
 
 import argparse
+import os
 import sys
+import tempfile
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
@@ -116,15 +118,39 @@ def sweep_one(family: str, frame: pd.DataFrame, args: argparse.Namespace):
     return family, results, cutoffs, None
 
 
+def _atomic_write(final_path: Path, write_fn) -> None:
+    """Write to a temp file in the same directory, then atomically rename it onto
+    final_path. Guards against a crash mid-write leaving a truncated file at the
+    exact path --resume's existence check looks for. The temp name uses a distinct
+    suffix so a leftover from a killed run is never mistaken for a completed
+    output."""
+    fd, tmp_name = tempfile.mkstemp(
+        dir=final_path.parent, prefix=f".{final_path.name}.", suffix=".tmp"
+    )
+    os.close(fd)
+    tmp_path = Path(tmp_name)
+    try:
+        write_fn(tmp_path)
+        os.replace(tmp_path, final_path)
+    except BaseException:
+        tmp_path.unlink(missing_ok=True)
+        raise
+
+
 def write_family(out_dir: Path, family: str, results: pd.DataFrame,
                  cutoffs: pd.DataFrame) -> Path:
     """Write one family's outputs as soon as it finishes, so --resume can skip it."""
     out_dir.mkdir(parents=True, exist_ok=True)
     path = out_dir / f"{family}.parquet"
-    results.to_parquet(path, index=False)
-    cutoffs.to_parquet(out_dir / f"{family}_cutoffs.parquet", index=False)
+    _atomic_write(path, lambda tmp: results.to_parquet(tmp, index=False))
+
+    cutoffs_path = out_dir / f"{family}_cutoffs.parquet"
+    _atomic_write(cutoffs_path, lambda tmp: cutoffs.to_parquet(tmp, index=False))
+
     latest = cutoffs[cutoffs["date"] == cutoffs["date"].max()]
-    latest.to_csv(out_dir / f"{family}_cutoffs_latest.csv", index=False)
+    latest_path = out_dir / f"{family}_cutoffs_latest.csv"
+    _atomic_write(latest_path, lambda tmp: latest.to_csv(tmp, index=False))
+
     return path
 
 
@@ -178,6 +204,9 @@ def main(argv: list[str] | None = None) -> None:
         print("No results produced.")
         return
 
+    # Loads every family's full results into memory at once (tens of millions of
+    # rows at the documented full scale: ~322k cells x 7 horizons x 8 families).
+    # A full run wants enough RAM; use --families to batch it if that's tight.
     pooled = pd.concat([pd.read_parquet(p) for p in written], ignore_index=True)
     finite = np.isfinite(pooled["t_stat"])
     n_excluded = int((~finite).sum())
