@@ -387,3 +387,60 @@ def test_sweep_empty_and_nonempty_dtypes_match():
     assert len(empty) == 0
     assert len(nonempty) > 0
     pd.testing.assert_series_equal(empty.dtypes, nonempty.dtypes)
+
+
+from backtesting.research.bucket_sweep import HORIZONS, InsufficientData, run_family
+
+
+def _synthetic_frame(n_contracts: int = 6, n_rows: int = 400) -> pd.DataFrame:
+    """A price panel shaped like a family frame: date, contract, open, close."""
+    rng = np.random.default_rng(7)
+    dates = pd.bdate_range("2015-01-01", periods=n_rows)
+    parts = []
+    for c in range(n_contracts):
+        close = 50.0 + np.cumsum(rng.normal(0, 0.5, size=n_rows))
+        parts.append(
+            pd.DataFrame(
+                {
+                    "date": dates,
+                    "contract": f"C{c}",
+                    "open": close + rng.normal(0, 0.05, size=n_rows),
+                    "close": close,
+                }
+            )
+        )
+    return pd.concat(parts, ignore_index=True)
+
+
+def test_horizons_match_the_spec():
+    assert HORIZONS == (1, 2, 3, 5, 10, 15, 20)
+
+
+def test_run_family_produces_labelled_results():
+    results, cutoffs = run_family(
+        "synthetic", _synthetic_frame(),
+        max_k=2, min_samples=5, n_buckets=3, min_history=200,
+    )
+
+    assert not results.empty
+    assert results.columns[0] == "family"
+    assert set(results["family"]) == {"synthetic"}
+    assert set(results["horizon"]) <= set(HORIZONS)
+    assert set(results["k"]) == {1, 2}
+    assert (results["n"] >= 5).all()
+    assert cutoffs.columns[0] == "family"
+    # Every k=1 combination names exactly one indicator.
+    singles = results[results["k"] == 1]
+    assert not singles["indicators"].str.contains(r"\|").any()
+    # No MISSING_CODE ever reaches a bucket label.
+    assert set(results["buckets"].str.split("|").explode()) <= set(BUCKET_LABELS)
+    # Themes are real and never repeat inside a combination.
+    assert set(results["themes"].str.split("|").explode()) <= set(THEMES)
+    repeated = results["themes"].str.split("|").apply(lambda t: len(t) != len(set(t)))
+    assert not repeated.any()
+
+
+def test_run_family_raises_on_a_thin_panel():
+    with pytest.raises(InsufficientData):
+        run_family("thin", _synthetic_frame(n_contracts=1, n_rows=130),
+                   max_k=4, min_samples=30, n_buckets=3, min_history=2000)

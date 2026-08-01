@@ -23,6 +23,9 @@ from itertools import combinations, product
 import numpy as np
 import pandas as pd
 
+from crudewatch.research.features import FEATURE_NAMES, add_features
+from crudewatch.research.targets import add_forward_returns
+
 BUCKET_LABELS: tuple[str, ...] = ("low", "mid", "high")
 MISSING_CODE: int = -1
 
@@ -354,3 +357,59 @@ def sweep(
             }
         )[list(RESULT_COLUMNS)]
     return pd.concat(parts, ignore_index=True)[list(RESULT_COLUMNS)]
+
+
+HORIZONS: tuple[int, ...] = (1, 2, 3, 5, 10, 15, 20)
+
+
+def run_family(
+    family: str,
+    frame: pd.DataFrame,
+    horizons: Sequence[int] = HORIZONS,
+    n_buckets: int = 3,
+    max_k: int = 4,
+    min_samples: int = 30,
+    min_history: int = 2000,
+    progress: Callable[[int, int], None] | None = None,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Full sweep for one contract family: features -> outcomes -> buckets -> cells.
+
+    Rows with a NaN in any indicator or any forward column are dropped up front,
+    then rows the point-in-time bucketing could not code (quantile warmup or
+    degenerate edges) are dropped too. What survives is a single complete-case
+    panel, so every combination is measured on an identical sample and cells are
+    comparable across combinations.
+    """
+    featured = add_features(frame)
+    full = add_forward_returns(featured, horizons=tuple(horizons))
+
+    fwd_cols = [f"fwd_{h}" for h in horizons]
+    panel = full.dropna(subset=list(FEATURE_NAMES) + fwd_cols)
+
+    if len(panel) < min_history:
+        raise InsufficientData(
+            f"{family}: {len(panel)} complete-case rows, fewer than the "
+            f"min_history={min_history} needed before any date can be bucketed"
+        )
+
+    codes, cutoffs = bucketize(panel, FEATURE_NAMES, n_buckets, min_history)
+    codeable = (codes != MISSING_CODE).all(axis=1)
+    codes = codes.loc[codeable]
+    panel = panel.loc[codes.index]
+
+    required = min_samples * n_buckets**max_k
+    if len(codes) < required:
+        raise InsufficientData(
+            f"{family}: {len(codes)} codeable rows after warmup, need at least "
+            f"{required} for max_k={max_k}, n_buckets={n_buckets}, "
+            f"min_samples={min_samples}"
+        )
+
+    results = sweep(
+        codes, panel[fwd_cols], max_k=max_k, min_samples=min_samples,
+        n_buckets=n_buckets, progress=progress,
+    )
+
+    results.insert(0, "family", family)
+    cutoffs.insert(0, "family", family)
+    return results, cutoffs
