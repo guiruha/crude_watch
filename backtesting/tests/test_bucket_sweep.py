@@ -233,3 +233,57 @@ def test_decode_cell_maps_joint_code_to_labels():
     # cell = b0 + 3*b1 + 9*b2 with b0=2 (high), b1=0 (low), b2=1 (mid)
     assert decode_cell(2 + 3 * 0 + 9 * 1, k=3, n_buckets=3) == "high|low|mid"
     assert decode_cell(0, k=1, n_buckets=3) == "low"
+
+
+from crudewatch.research.features import FEATURE_NAMES
+
+from backtesting.research.bucket_sweep import (
+    INDICATOR_THEME,
+    THEMES,
+    count_theme_combinations,
+    theme_combinations,
+)
+
+
+def test_themes_partition_every_indicator_exactly_once():
+    """Adding an indicator to FEATURES without a theme must fail here, loudly."""
+    assigned = [name for names in THEMES.values() for name in names]
+
+    assert len(assigned) == len(set(assigned)), "an indicator appears in two themes"
+    assert set(assigned) == set(FEATURE_NAMES)
+    assert len(THEMES) == 7
+    assert INDICATOR_THEME["z_20"] == "level"
+    assert INDICATOR_THEME["mom_10"] == "direction"
+    assert INDICATOR_THEME["vol_ratio"] == "volatility"
+
+
+def test_no_combination_mixes_two_indicators_of_one_theme():
+    for combo in theme_combinations(FEATURE_NAMES, max_k=4):
+        themes = [INDICATOR_THEME[name] for name in combo]
+        assert len(themes) == len(set(themes)), f"{combo} repeats a theme"
+
+
+def test_combination_count_matches_symmetric_polynomial():
+    """Theme sizes [6, 6, 4, 3, 2, 2, 1] -> e1..e4 = 24, 235, 1212, 3544."""
+    per_k = {k: 0 for k in range(1, 5)}
+    for combo in theme_combinations(FEATURE_NAMES, max_k=4):
+        per_k[len(combo)] += 1
+
+    assert per_k == {1: 24, 2: 235, 3: 1212, 4: 3544}
+    assert sum(per_k.values()) == 5015
+    assert count_theme_combinations(FEATURE_NAMES, max_k=4) == 5015
+
+
+def test_combinations_are_unordered_and_unique():
+    small = ["a1", "a2", "b1", "c1"]
+    theme_of = {"a1": "A", "a2": "A", "b1": "B", "c1": "C"}
+
+    combos = list(theme_combinations(small, max_k=3, theme_of=theme_of))
+
+    # (1 + 2x)(1 + x)(1 + x) = 1 + 4x + 5x^2 + 2x^3 -> e1=4, e2=5, e3=2
+    assert len(combos) == 11
+    assert len(set(combos)) == len(combos)
+    assert ("a1", "a2") not in set(combos)      # same theme, never emitted
+    assert ("a1", "b1") in set(combos)
+    assert ("b1", "a1") not in set(combos)      # unordered: only one orientation
+    assert count_theme_combinations(small, max_k=3, theme_of=theme_of) == 11

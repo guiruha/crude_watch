@@ -17,7 +17,8 @@ owns all of that.
 """
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
+from itertools import combinations, product
 
 import numpy as np
 import pandas as pd
@@ -222,3 +223,73 @@ def cell_stats(
             }
         )[list(int_cols + float_cols)]
     return pd.concat(frames, ignore_index=True)
+
+
+# Indicator -> theme. Mirrors the scoring engine's blocks (block_trendiness,
+# block_direction, block_strength, block_level in crudewatch.scoring.blocks) and
+# the app's component screens, so the sweep speaks the project's vocabulary.
+#
+# A combination takes at most one indicator per theme. Two indicators from the
+# same theme mostly restate each other — z_20 and z_50 are one measurement at
+# two windows — so pairing them buys a narrower cell, not a new question.
+THEMES: dict[str, tuple[str, ...]] = {
+    "level": ("z_10", "z_20", "z_50", "pctb_20_2", "pctb_10_1_5", "keltner_dist_20"),
+    "direction": ("slope_20", "macd_hist", "ema_align", "mom_5", "mom_10", "mom_20"),
+    "exhaustion": ("rsi_div_14", "macd_div", "mom_decel_10", "er_drop_20"),
+    "regime": ("er_20", "variance_ratio_5", "autocorr_20"),
+    "quality": ("r2_20", "dir_persistence_20"),
+    "oscillator": ("rsi_2", "rsi_14"),
+    "volatility": ("vol_ratio",),
+}
+
+INDICATOR_THEME: dict[str, str] = {
+    name: theme for theme, names in THEMES.items() for name in names
+}
+
+
+def _by_theme(
+    indicators: Sequence[str], theme_of: Mapping[str, str]
+) -> list[tuple[str, list[str]]]:
+    """Group ``indicators`` by theme, preserving first-seen order for determinism."""
+    grouped: dict[str, list[str]] = {}
+    for name in indicators:
+        grouped.setdefault(theme_of[name], []).append(name)
+    return list(grouped.items())
+
+
+def theme_combinations(
+    indicators: Sequence[str],
+    max_k: int,
+    theme_of: Mapping[str, str] = INDICATOR_THEME,
+) -> Iterator[tuple[str, ...]]:
+    """Yield every cross-theme combination of size 1..``max_k``.
+
+    A combination picks k distinct themes and one indicator from each, so no two
+    of its indicators share a theme. Themes are chosen with ``combinations`` (so
+    unordered, each set once) and the per-theme picks are enumerated in order,
+    making the whole sequence deterministic.
+    """
+    grouped = _by_theme(indicators, theme_of)
+
+    for k in range(1, max_k + 1):
+        for theme_group in combinations(grouped, k):
+            yield from product(*(names for _, names in theme_group))
+
+
+def count_theme_combinations(
+    indicators: Sequence[str],
+    max_k: int,
+    theme_of: Mapping[str, str] = INDICATOR_THEME,
+) -> int:
+    """How many combinations ``theme_combinations`` will yield, without building them.
+
+    This is the sum of the elementary symmetric polynomials ``e_1..e_max_k`` of
+    the theme sizes, accumulated by expanding ``prod(1 + size_i * x)``.
+    """
+    sizes = [len(names) for _, names in _by_theme(indicators, theme_of)]
+    poly = [1]  # coefficients of x^0, x^1, ...
+    for size in sizes:
+        poly = poly + [0]
+        for i in range(len(poly) - 1, 0, -1):
+            poly[i] += size * poly[i - 1]
+    return sum(poly[1 : max_k + 1])
