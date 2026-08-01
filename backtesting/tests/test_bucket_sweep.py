@@ -350,3 +350,40 @@ def test_sweep_reports_progress():
           progress=lambda done, total: seen.append((done, total)))
 
     assert seen == [(1, 3), (2, 3), (3, 3)]  # a1, b1, then (a1, b1)
+
+
+def test_sweep_reports_progress_even_when_no_combination_survives():
+    """Progress must still advance once per combination when every combination
+    yields zero surviving cells, otherwise a long run's progress bar stalls.
+    """
+    codes = pd.DataFrame({"a1": np.zeros(10, dtype=np.int8),
+                          "b1": np.zeros(10, dtype=np.int8)})
+    forwards = pd.DataFrame({"fwd_1": np.arange(10, dtype=float)})
+    seen: list[tuple[int, int]] = []
+
+    out = sweep(codes, forwards, max_k=2, min_samples=1000, n_buckets=3,
+                theme_of=_SMALL_THEMES,
+                progress=lambda done, total: seen.append((done, total)))
+
+    assert out.empty
+    assert seen == [(1, 3), (2, 3), (3, 3)]  # a1, b1, then (a1, b1)
+
+
+def test_sweep_empty_and_nonempty_dtypes_match():
+    """The empty-result fallback must type columns exactly like the non-empty
+    path (int64 k/horizon/n, object themes/indicators/buckets, float64 for the
+    stats), so pd.concat-ing per-family results does not upcast int columns
+    to float64 for the whole pooled table.
+    """
+    codes = pd.DataFrame({"a1": np.array([0, 0, 0, 1, 1, 1], dtype=np.int8),
+                          "b1": np.zeros(6, dtype=np.int8)})
+    forwards = pd.DataFrame({"fwd_1": [1.0, 2.0, 3.0, -1.0, -2.0, 0.5]})
+
+    empty = sweep(codes, forwards, max_k=2, min_samples=1000, n_buckets=3,
+                  theme_of=_SMALL_THEMES)
+    nonempty = sweep(codes, forwards, max_k=2, min_samples=3, n_buckets=3,
+                     theme_of=_SMALL_THEMES)
+
+    assert len(empty) == 0
+    assert len(nonempty) > 0
+    pd.testing.assert_series_equal(empty.dtypes, nonempty.dtypes)

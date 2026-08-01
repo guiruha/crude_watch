@@ -343,9 +343,14 @@ def sweep(
         parts.append(stats.drop(columns="cell"))
 
     if not parts:
+        int_cols = ("k", "horizon", "n")
+        object_cols = ("themes", "indicators", "buckets")
+        float_cols = ("mean", "median", "std", "hit_rate", "t_stat")
         return pd.DataFrame(
-            {c: pd.Series(dtype="object"
-                          if c in ("themes", "indicators", "buckets") else "float64")
-             for c in RESULT_COLUMNS}
-        )
+            {
+                **{c: pd.Series(dtype="int64") for c in int_cols},
+                **{c: pd.Series(dtype=str) for c in object_cols},
+                **{c: pd.Series(dtype="float64") for c in float_cols},
+            }
+        )[list(RESULT_COLUMNS)]
     return pd.concat(parts, ignore_index=True)[list(RESULT_COLUMNS)]
