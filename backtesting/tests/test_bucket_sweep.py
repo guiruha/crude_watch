@@ -444,3 +444,69 @@ def test_run_family_raises_on_a_thin_panel():
     with pytest.raises(InsufficientData):
         run_family("thin", _synthetic_frame(n_contracts=1, n_rows=130),
                    max_k=4, min_samples=30, n_buckets=3, min_history=2000)
+
+
+def test_run_family_stats_are_paired_with_the_right_rows():
+    """A regression guard against silent bucket/outcome misalignment.
+
+    If a row's bucket code were ever paired with a *different* row's forward
+    outcome -- a stray sort, reset_index, or reindex anywhere in the chain --
+    every downstream statistic would still look structurally valid (real
+    labels, plausible n, sensible themes) while being quietly wrong. Structural
+    checks like ``test_run_family_produces_labelled_results`` cannot see this.
+
+    This test recomputes one k=1 cell's ``n`` and ``mean`` completely
+    independently: rebuild the feature/outcome panel by hand, use the
+    `cutoffs` frame `run_family` returned to derive that indicator's per-date
+    edges (exactly as `bucketize` documents: a row's code is the count of its
+    own date's edges its value is `>=`, edges coming from strictly prior
+    dates), select the rows landing in the reported bucket, and average their
+    `fwd_h` directly -- with no dependency on `bucketize`'s internal row order.
+    """
+    from crudewatch.research.features import FEATURE_NAMES, add_features
+    from crudewatch.research.targets import add_forward_returns
+
+    frame = _synthetic_frame()
+    results, cutoffs = run_family(
+        "synthetic", frame, max_k=1, min_samples=5, n_buckets=3, min_history=200,
+    )
+
+    singles = results[results["k"] == 1]
+    assert not singles.empty
+    row = singles.iloc[0]
+    indicator = str(row["indicators"])
+    bucket = str(row["buckets"])
+    horizon = int(row["horizon"])
+
+    # Rebuild the exact complete-case panel run_family builds internally.
+    featured = add_features(frame)
+    full = add_forward_returns(featured, horizons=HORIZONS)
+    fwd_cols = [f"fwd_{h}" for h in HORIZONS]
+    panel = full.dropna(subset=list(FEATURE_NAMES) + fwd_cols)
+
+    # This indicator's per-date edges, taken from run_family's own cutoffs
+    # output -- family, date, indicator, edge_index, value.
+    ind_cutoffs = cutoffs[cutoffs["indicator"] == indicator]
+    edges = ind_cutoffs.pivot(index="date", columns="edge_index", values="value")
+    edges.columns = [f"edge_{j}" for j in edges.columns]
+    edge_cols = sorted(edges.columns, key=lambda c: int(c.split("_")[1]))
+
+    merged = panel.merge(edges, left_on="date", right_index=True, how="left")
+
+    usable = merged[indicator].notna()
+    for c in edge_cols:
+        usable &= merged[c].notna()
+    for prev, cur in zip(edge_cols, edge_cols[1:]):
+        usable &= merged[cur] > merged[prev]  # strictly increasing, else no real split
+
+    code = pd.Series(0, index=merged.index, dtype=int)
+    for c in edge_cols:
+        code = code + (merged[indicator] >= merged[c]).astype(int)
+
+    bucket_index = list(BUCKET_LABELS).index(bucket)
+    in_cell = usable & (code == bucket_index)
+
+    recomputed = merged.loc[in_cell, f"fwd_{horizon}"]
+
+    assert len(recomputed) == int(row["n"])
+    assert recomputed.mean() == pytest.approx(float(row["mean"]))
