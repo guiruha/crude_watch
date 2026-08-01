@@ -10,6 +10,7 @@ import pandas as pd
 import pytest
 
 from backtesting.research.bucket_sweep import BUCKET_LABELS, MISSING_CODE, expanding_cutoffs
+from backtesting.research.bucket_sweep import bucketize
 
 
 def _dated(values, contract="A", start="2015-01-01"):
@@ -87,3 +88,64 @@ def test_empty_panel_returns_empty_frame():
 def test_module_constants():
     assert BUCKET_LABELS == ("low", "mid", "high")
     assert MISSING_CODE == -1
+
+
+def test_bucket_codes_ignore_future_bars():
+    """THE binding test: appending future history must not re-bucket earlier rows.
+
+    This is what separates point-in-time cutoffs from a full-sample
+    `.quantile()`. If it ever fails, look-ahead has been reintroduced.
+    """
+    rng = np.random.default_rng(3)
+    past = _dated(rng.normal(size=200))
+    codes_past, _ = bucketize(past, ["ind"], n_buckets=3, min_history=20)
+
+    future = _dated(rng.normal(size=80) + 25.0, start="2016-06-01")  # a regime shift
+    extended = pd.concat([past, future], ignore_index=True)
+    codes_extended, _ = bucketize(extended, ["ind"], n_buckets=3, min_history=20)
+
+    original = codes_past["ind"].to_numpy()
+    recomputed = codes_extended["ind"].to_numpy()[: len(past)]
+    np.testing.assert_array_equal(original, recomputed)
+
+
+def test_bucketize_marks_the_warmup_as_missing():
+    panel = _dated([5, 1, 9, 3, 7, 2, 8, 4, 6, 0])
+
+    codes, _ = bucketize(panel, ["ind"], n_buckets=3, min_history=4)
+
+    assert (codes["ind"].to_numpy()[:4] == MISSING_CODE).all()
+    assert (codes["ind"].to_numpy()[4:] != MISSING_CODE).all()
+
+
+def test_bucketize_assigns_codes_against_prior_date_edges():
+    panel = _dated([5, 1, 9, 3, 7, 2, 8, 4, 6, 0])
+
+    codes, _ = bucketize(panel, ["ind"], n_buckets=3, min_history=3)
+
+    # Row 3 has value 3.0 against edges 3.666667 / 6.333333 -> below both -> low.
+    assert codes["ind"].iloc[3] == 0
+    # Row 6 has value 8.0; prior [5,1,9,3,7,2] -> edges 2.666667 / 6.333333 -> high.
+    assert codes["ind"].iloc[6] == 2
+
+
+def test_bucketize_ignores_forward_outcome_columns():
+    """Perturbing outcomes never changes bucket codes — outcomes cannot leak in."""
+    rng = np.random.default_rng(1)
+    panel = _dated(rng.normal(size=200))
+    codes_a, _ = bucketize(panel, ["ind"], n_buckets=3, min_history=20)
+
+    panel["fwd_1"] = rng.normal(size=200) * 1000.0
+    codes_b, _ = bucketize(panel, ["ind"], n_buckets=3, min_history=20)
+
+    pd.testing.assert_frame_equal(codes_a, codes_b)
+
+
+def test_bucketize_marks_degenerate_edges_as_missing():
+    """A constant prior window gives equal edges, which is not a real split."""
+    panel = _dated([2.0] * 6 + [1.0, 5.0, 3.0, 4.0])
+
+    codes, _ = bucketize(panel, ["ind"], n_buckets=3, min_history=3)
+
+    # Rows 3-5 look back on a constant window -> both edges are 2.0 -> missing.
+    assert (codes["ind"].iloc[3:6] == MISSING_CODE).all()

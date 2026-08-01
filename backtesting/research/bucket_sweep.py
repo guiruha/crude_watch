@@ -97,3 +97,50 @@ def expanding_cutoffs(
             )
 
     return pd.concat(frames, ignore_index=True)
+
+
+def bucketize(
+    panel: pd.DataFrame,
+    indicators: Sequence[str],
+    n_buckets: int = 3,
+    min_history: int = 2000,
+    date_col: str = "date",
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Assign each row a bucket code per indicator using that date's prior edges.
+
+    A row's code is the number of its date's edges the value meets or exceeds
+    (0 = low, 1 = mid, 2 = high for terciles). Rows whose date has no usable
+    edges — still inside the ``min_history`` warmup, or a prior window so
+    degenerate the edges are not strictly increasing — get ``MISSING_CODE``
+    rather than a fabricated bucket.
+
+    Returns ``(codes, cutoffs)``; ``codes`` is indexed like the date-sorted
+    ``panel`` so it can be aligned straight back onto it.
+    """
+    cutoffs = expanding_cutoffs(panel, indicators, n_buckets, min_history, date_col)
+    ordered = panel.sort_values(date_col, kind="mergesort")
+    row_dates = ordered[date_col]
+
+    wide = cutoffs.pivot(index="date", columns=["indicator", "edge_index"], values="value")
+
+    code_cols: dict[str, np.ndarray] = {}
+    for name in indicators:
+        values = ordered[name].to_numpy(dtype=float)
+        edges = [
+            wide[(name, j)].reindex(row_dates).to_numpy(dtype=float)
+            for j in range(n_buckets - 1)
+        ]
+
+        usable = ~np.isnan(edges[0])
+        for j in range(1, n_buckets - 1):
+            usable &= ~np.isnan(edges[j])
+            usable &= edges[j] > edges[j - 1]  # strictly increasing, else no real split
+
+        code = np.zeros(len(values), dtype=np.int16)
+        for edge in edges:
+            code += (values >= edge).astype(np.int16)
+
+        code_cols[name] = np.where(usable, code, MISSING_CODE).astype(np.int8)
+
+    codes = pd.DataFrame(code_cols, index=ordered.index)
+    return codes, cutoffs
