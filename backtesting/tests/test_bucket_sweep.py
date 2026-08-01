@@ -287,3 +287,66 @@ def test_combinations_are_unordered_and_unique():
     assert ("a1", "b1") in set(combos)
     assert ("b1", "a1") not in set(combos)      # unordered: only one orientation
     assert count_theme_combinations(small, max_k=3, theme_of=theme_of) == 11
+
+
+from backtesting.research.bucket_sweep import RESULT_COLUMNS, sweep
+
+_SMALL_THEMES = {"a1": "A", "a2": "A", "b1": "B", "c1": "C"}
+
+
+def test_sweep_covers_every_cross_theme_combination_exactly_once():
+    """Theme sizes [2, 1, 1] at max_k=3 -> 4 + 5 + 2 = 11 combinations."""
+    rng = np.random.default_rng(0)
+    names = list(_SMALL_THEMES)
+    codes = pd.DataFrame({n: np.zeros(50, dtype=np.int8) for n in names})
+    forwards = pd.DataFrame({"fwd_1": rng.normal(size=50)})
+
+    out = sweep(codes, forwards, max_k=3, min_samples=1, n_buckets=3,
+                theme_of=_SMALL_THEMES)
+
+    assert len(out) == 11        # all codes are 0 -> one cell per combination
+    assert out["indicators"].nunique() == 11
+    assert not out["indicators"].duplicated().any()
+    emitted = set(out["indicators"])
+    assert "a1|a2" not in emitted   # same theme, never paired
+    assert "a1|b1" in emitted
+    assert "b1|a1" not in emitted   # unordered: one orientation only
+
+
+def test_sweep_labels_themes_alongside_indicators():
+    codes = pd.DataFrame({"a1": np.zeros(6, dtype=np.int8),
+                          "b1": np.zeros(6, dtype=np.int8)})
+    forwards = pd.DataFrame({"fwd_1": [1.0, 2.0, 3.0, -1.0, -2.0, 0.5]})
+
+    out = sweep(codes, forwards, max_k=2, min_samples=3, n_buckets=3,
+                theme_of=_SMALL_THEMES)
+
+    pair = out[out["indicators"] == "a1|b1"]
+    assert pair["themes"].iloc[0] == "A|B"
+
+
+def test_sweep_returns_expected_columns_and_k():
+    codes = pd.DataFrame({"a1": np.array([0, 0, 0, 1, 1, 1], dtype=np.int8),
+                          "b1": np.zeros(6, dtype=np.int8)})
+    forwards = pd.DataFrame({"fwd_1": [1.0, 2.0, 3.0, -1.0, -2.0, 0.5]})
+
+    out = sweep(codes, forwards, max_k=2, min_samples=3, n_buckets=3,
+                theme_of=_SMALL_THEMES)
+
+    assert list(out.columns) == list(RESULT_COLUMNS)
+    assert set(out["k"]) == {1, 2}
+    single = out[(out["indicators"] == "a1") & (out["buckets"] == "low")]
+    assert single["mean"].iloc[0] == pytest.approx(2.0)
+
+
+def test_sweep_reports_progress():
+    codes = pd.DataFrame({"a1": np.zeros(10, dtype=np.int8),
+                          "b1": np.zeros(10, dtype=np.int8)})
+    forwards = pd.DataFrame({"fwd_1": np.arange(10, dtype=float)})
+    seen: list[tuple[int, int]] = []
+
+    sweep(codes, forwards, max_k=2, min_samples=1, n_buckets=3,
+          theme_of=_SMALL_THEMES,
+          progress=lambda done, total: seen.append((done, total)))
+
+    assert seen == [(1, 3), (2, 3), (3, 3)]  # a1, b1, then (a1, b1)

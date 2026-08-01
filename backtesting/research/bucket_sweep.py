@@ -293,3 +293,59 @@ def count_theme_combinations(
         for i in range(len(poly) - 1, 0, -1):
             poly[i] += size * poly[i - 1]
     return sum(poly[1 : max_k + 1])
+
+
+def sweep(
+    codes: pd.DataFrame,
+    forwards: pd.DataFrame,
+    max_k: int = 4,
+    min_samples: int = 30,
+    n_buckets: int = 3,
+    theme_of: Mapping[str, str] = INDICATOR_THEME,
+    progress: Callable[[int, int], None] | None = None,
+) -> pd.DataFrame:
+    """Statistics for every joint bucket cell of every cross-theme combination.
+
+    Combinations come from :func:`theme_combinations`, so each is unordered,
+    appears once, and never contains two indicators of the same theme. The joint
+    cell of a combination is the mixed-radix code ``b0 + n*b1 + n^2*b2 + ...``,
+    which collapses a k-way grouping into a single integer key — grouping on one
+    integer column is markedly faster in pandas than grouping on k separate keys.
+    """
+    names = list(codes.columns)
+    horizons = [int(c.split("_")[1]) for c in forwards.columns]
+
+    hits = (forwards > 0).astype(float)
+    hits.columns = [f"hit_{h}" for h in horizons]
+    data = pd.concat([forwards, hits], axis=1)
+
+    total = count_theme_combinations(names, max_k, theme_of)
+    done = 0
+    parts: list[pd.DataFrame] = []
+
+    for combo in theme_combinations(names, max_k, theme_of):
+        k = len(combo)
+        code = codes[combo[0]].astype(np.int32)
+        for i, col in enumerate(combo[1:], start=1):
+            code = code + codes[col].astype(np.int32) * (n_buckets**i)
+
+        stats = cell_stats(data, code, horizons, min_samples)
+        done += 1
+        if progress is not None:
+            progress(done, total)
+        if stats.empty:
+            continue
+
+        stats["k"] = k
+        stats["themes"] = "|".join(theme_of[name] for name in combo)
+        stats["indicators"] = "|".join(combo)
+        stats["buckets"] = [decode_cell(int(c), k, n_buckets) for c in stats["cell"]]
+        parts.append(stats.drop(columns="cell"))
+
+    if not parts:
+        return pd.DataFrame(
+            {c: pd.Series(dtype="object"
+                          if c in ("themes", "indicators", "buckets") else "float64")
+             for c in RESULT_COLUMNS}
+        )
+    return pd.concat(parts, ignore_index=True)[list(RESULT_COLUMNS)]
