@@ -213,8 +213,12 @@ def cell_stats(
         )
 
     if not frames:
+        int_cols = ("cell", "horizon", "n")
+        float_cols = ("mean", "median", "std", "hit_rate", "t_stat")
         return pd.DataFrame(
-            {c: pd.Series(dtype="float64") for c in
-             ("cell", "horizon", "n", "mean", "median", "std", "hit_rate", "t_stat")}
-        )
+            {
+                **{c: pd.Series(dtype="int64") for c in int_cols},
+                **{c: pd.Series(dtype="float64") for c in float_cols},
+            }
+        )[list(int_cols + float_cols)]
     return pd.concat(frames, ignore_index=True)

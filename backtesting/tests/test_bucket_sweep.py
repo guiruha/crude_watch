@@ -11,6 +11,7 @@ import pytest
 
 from backtesting.research.bucket_sweep import BUCKET_LABELS, MISSING_CODE, expanding_cutoffs
 from backtesting.research.bucket_sweep import bucketize
+from backtesting.research.bucket_sweep import cell_stats, decode_cell
 
 
 def _dated(values, contract="A", start="2015-01-01"):
@@ -172,9 +173,6 @@ def test_bucketize_marks_degenerate_edges_as_missing():
     assert (codes["ind"].iloc[3:6] == MISSING_CODE).all()
 
 
-from backtesting.research.bucket_sweep import cell_stats, decode_cell
-
-
 def _tiny_data():
     """Six rows, one horizon. Cell 0 = [1, 2, 3]; cell 1 = [-1, -2, 0.5]."""
     fwd = pd.Series([1.0, 2.0, 3.0, -1.0, -2.0, 0.5])
@@ -200,6 +198,9 @@ def test_cell_stats_match_hand_computed_values():
     assert mid["median"] == pytest.approx(-1.0)
     assert mid["std"] == pytest.approx(1.2583057, abs=1e-6)
     assert mid["hit_rate"] == pytest.approx(1 / 3)
+    # Independently computed literal (not the formula re-expressed): mean
+    # -0.8333333, sample std 1.2583057, n=3 -> t_stat -1.1470787.
+    assert mid["t_stat"] == pytest.approx(-1.1470787, abs=1e-6)
 
 
 def test_cell_stats_drops_cells_below_min_samples():
@@ -209,6 +210,23 @@ def test_cell_stats_drops_cells_below_min_samples():
     )
 
     assert out["cell"].tolist() == [0]
+
+
+def test_cell_stats_empty_and_nonempty_dtypes_match():
+    """The empty-result fallback must type columns exactly like the non-empty
+    path, so pd.concat([empty, nonempty]) does not upcast int64 columns
+    (cell, horizon, n) to float64 -- which breaks decode_cell downstream.
+    """
+    empty = cell_stats(
+        _tiny_data(), pd.Series([0, 0, 0, 1, 1, 1]), horizons=[1], min_samples=10
+    )
+    nonempty = cell_stats(
+        _tiny_data(), pd.Series([0, 0, 0, 1, 1, 1]), horizons=[1], min_samples=3
+    )
+
+    assert len(empty) == 0
+    assert len(nonempty) > 0
+    pd.testing.assert_series_equal(empty.dtypes, nonempty.dtypes)
 
 
 def test_decode_cell_maps_joint_code_to_labels():
