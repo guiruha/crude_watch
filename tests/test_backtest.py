@@ -201,20 +201,3 @@ def test_backtest_contract_smoke():
     if not res.trades.empty:
         assert abs(res.trades["net_pnl"].sum() - res.equity.iloc[-1]) < 1e-6
 
-
-def test_score_series_uses_family_weights(monkeypatch):
-    from crudewatch.scoring import score as S
-    from crudewatch.scoring.backtest import score_series
-    base = _synthetic_family(seed=5)
-    s_equal = score_series(base, "outrights", "A", horizon=25)
-    heavy_rev = {
-        "range": {"rev_term": 1.0, "lvl_term": 0.0, "timing_term": 0.0, "vol_term": 0.0},
-        "trend": {"dir_term": 1.0, "qual_term": 0.0, "cont_term": 0.0, "ext_low": 0.0},
-        "transition_shrink": 0.4,
-    }
-    monkeypatch.setattr(S, "FAMILY_WEIGHTS", {"outrights": heavy_rev})
-    s_weighted = score_series(base, "outrights", "A", horizon=25)
-    # Distinct weights must change at least one bar's opportunity.
-    assert not np.allclose(
-        s_equal["opportunity"].to_numpy(), s_weighted["opportunity"].to_numpy(), equal_nan=True
-    )

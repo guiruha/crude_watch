@@ -1,0 +1,570 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CrudeWatch · Indicator Bucket Sweep — Findings</title>
+<style>
+  :root{
+    --bg:#0B0E0D; --surface:#141A17; --surface2:#1B221E; --border:#26302A;
+    --accent:#10B981; --text:#E7ECEA; --subtext:#8B9691;
+    --bear:#E5484D; --amber:#F5A623;
+    --s1:#6EE7B7; --s2:#25B98A; --s3:#0C7A57;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  .wrap{max-width:960px;margin:0 auto;padding:48px 24px 96px}
+  header{border-bottom:1px solid var(--border);padding-bottom:24px;margin-bottom:40px}
+  .eyebrow{font:600 11px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;
+    color:var(--accent);margin-bottom:14px}
+  h1{margin:0 0 10px;font-size:30px;line-height:1.2;font-weight:650;letter-spacing:-.02em}
+  .sub{color:var(--subtext);font-size:15px;margin:0}
+  h2{margin:56px 0 6px;font-size:21px;font-weight:640;letter-spacing:-.01em}
+  h2 .num{color:var(--accent);font:600 13px/1 var(--mono);margin-right:10px}
+  h3{margin:32px 0 8px;font-size:16px;font-weight:640}
+  p{margin:12px 0}
+  .lede{font-size:16px;color:#CBD5D0}
+  .meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+  .chip{background:var(--surface);border:1px solid var(--border);border-radius:6px;
+    padding:5px 10px;font:12px/1.4 var(--mono);color:var(--subtext)}
+  .chip b{color:var(--text);font-weight:600}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:10px;
+    padding:22px 24px;margin:22px 0}
+  .verdict{border-left:3px solid var(--bear)}
+  .verdict.good{border-left-color:var(--accent)}
+  .verdict.warn{border-left-color:var(--amber)}
+  .verdict h3{margin-top:0}
+  .hero{display:flex;flex-wrap:wrap;gap:14px;margin:24px 0}
+  .stat{flex:1 1 190px;background:var(--surface);border:1px solid var(--border);
+    border-radius:10px;padding:16px 18px}
+  .stat .v{font:650 27px/1.1 var(--mono);letter-spacing:-.02em}
+  .stat .l{color:var(--subtext);font-size:12px;margin-top:7px;line-height:1.45}
+  .stat.bad .v{color:var(--bear)} .stat.good .v{color:var(--accent)}
+  .stat.warn .v{color:var(--amber)}
+  figure{margin:24px 0}
+  figcaption{color:var(--subtext);font-size:13px;margin-top:12px;line-height:1.55}
+  .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px}
+  th,td{text-align:right;padding:8px 10px;border-bottom:1px solid var(--border)}
+  th:first-child,td:first-child{text-align:left}
+  thead th{color:var(--subtext);font:600 11px/1.3 var(--mono);letter-spacing:.06em;
+    text-transform:uppercase;border-bottom:1px solid var(--border)}
+  tbody tr:hover{background:var(--surface2)}
+  td.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .bar{position:relative;height:9px;background:var(--surface2);border-radius:4px;
+    overflow:hidden;min-width:70px}
+  .bar span{position:absolute;inset:0 auto 0 0;background:var(--s2);border-radius:4px}
+  .funnel{margin:6px 0}
+  .frow{display:flex;align-items:center;gap:14px;margin:11px 0}
+  .flabel{flex:0 0 210px;font-size:13.5px;color:#CBD5D0}
+  .ftrack{flex:1 1 auto;height:26px;background:var(--surface2);border-radius:5px;
+    position:relative;overflow:hidden}
+  .ffill{position:absolute;inset:0 auto 0 0;border-radius:5px}
+  .fval{flex:0 0 108px;text-align:right;font:600 14px/1 var(--mono);
+    font-variant-numeric:tabular-nums}
+  code{font-family:var(--mono);font-size:.9em;background:var(--surface2);
+    padding:2px 6px;border-radius:4px;color:#CBD5D0}
+  ul,ol{margin:12px 0;padding-left:22px} li{margin:7px 0}
+  .rec{background:var(--surface);border:1px solid var(--border);border-radius:10px;
+    padding:20px 22px;margin:16px 0}
+  .rec h3{margin:0 0 4px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .tag{font:600 10px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;
+    padding:4px 8px;border-radius:4px;white-space:nowrap}
+  .t-hi{background:rgba(229,72,77,.16);color:#F09296;border:1px solid rgba(229,72,77,.35)}
+  .t-md{background:rgba(245,166,35,.14);color:#EBB765;border:1px solid rgba(245,166,35,.32)}
+  .t-lo{background:rgba(16,185,129,.14);color:#5FD3A8;border:1px solid rgba(16,185,129,.32)}
+  .legend{display:flex;flex-wrap:wrap;gap:16px;margin:0 0 6px;font-size:13px;color:#CBD5D0}
+  .legend i{display:inline-block;width:11px;height:11px;border-radius:3px;
+    margin-right:7px;vertical-align:-1px}
+  .foot{margin-top:64px;padding-top:20px;border-top:1px solid var(--border);
+    color:var(--subtext);font-size:12.5px}
+  svg{max-width:100%;height:auto;display:block}
+  .axis{stroke:var(--border);stroke-width:1}
+  .grid{stroke:var(--border);stroke-width:1;stroke-dasharray:2 4;opacity:.65}
+  .tick{fill:var(--subtext);font:11px var(--mono)}
+  .slabel{font:600 12px var(--mono)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">CrudeWatch · Offline Research</div>
+  <h1>Indicator Bucket Sweep — Findings &amp; Recommendations</h1>
+  <p class="sub">What followed every joint indicator state across eight WTI contract
+  families, and what of it survives honest statistical scrutiny.</p>
+  <div class="meta">
+    <span class="chip"><b>13,675,025</b> cells</span>
+    <span class="chip"><b>8</b> families</span>
+    <span class="chip"><b>24</b> indicators · <b>7</b> themes</span>
+    <span class="chip"><b>5,015</b> combinations (k≤4)</span>
+    <span class="chip">horizons <b>1,2,3,5,10,15,20</b></span>
+    <span class="chip"><b>2013-01-30 → 2026-07-02</b></span>
+  </div>
+</header>
+
+<p class="lede">The sweep ran clean and the engineering is sound — cutoffs are
+point-in-time, alignment is verified, nothing leaks. But the headline result is a
+<em>negative</em> one, and it is the most valuable thing here: <strong>the raw
+t-statistics in this dataset are not interpretable as evidence.</strong> Almost all
+of the apparent significance is an artifact of counting correlated observations as
+independent. One genuine, weak, economically-plausible relationship survives — and
+the live scoring engine currently weights it at zero.</p>
+
+<div class="card verdict">
+  <h3>Bottom line</h3>
+  <p style="margin-bottom:0">Do not trade any cell off its <code>t_stat</code>.
+  Use the sweep as a <em>descriptive</em> instrument — it is excellent at that —
+  and promote only relationships that show a <strong>monotone bucket gradient with a
+  coherent horizon term structure</strong>, which is a far stronger evidence standard
+  than any single cell's significance.</p>
+</div>
+
+<h2><span class="num">01</span>The multiple-testing problem is the finding</h2>
+
+<p>2,188,959 cells clear |t| &gt; 3 — against roughly 36,900 expected by chance.
+A 59× excess looks spectacular until you ask what an "observation" is. Two structural
+dependencies inflate every t-statistic in the study:</p>
+
+<ul>
+  <li><strong>Overlapping forward windows.</strong> At horizon 20, consecutive daily
+  observations share 19 of 20 bars. They are nearly the same measurement counted
+  twenty times.</li>
+  <li><strong>Cross-contract clustering.</strong> Cells pool every contract in a
+  family. On a median day, <code>calendars</code> has 90 contracts trading — all
+  driven by the same curve. That is one observation, not ninety.</li>
+</ul>
+
+<figure>
+  <div class="funnel">
+    <div class="frow"><div class="flabel">As reported (no correction)</div>
+      <div class="ftrack"><div class="ffill" style="width:100%;background:var(--s1)"
+        title="2,188,959 cells with |t| > 3, uncorrected"></div></div>
+      <div class="fval" style="color:var(--s1)">2,188,959</div></div>
+    <div class="frow"><div class="flabel">÷√h · overlapping windows</div>
+      <div class="ftrack"><div class="ffill" style="width:85%;background:var(--s2)"
+        title="245,888 cells survive the overlap correction"></div></div>
+      <div class="fval" style="color:var(--s2)">245,888</div></div>
+    <div class="frow"><div class="flabel">÷√m · contracts per date</div>
+      <div class="ftrack"><div class="ffill" style="width:65.6%;background:var(--s3)"
+        title="14,438 cells survive the clustering correction"></div></div>
+      <div class="fval" style="color:var(--s3)">14,438</div></div>
+    <div class="frow"><div class="flabel">Both corrections</div>
+      <div class="ftrack"><div class="ffill" style="width:4.7%;background:var(--bear)"
+        title="2 cells survive both corrections"></div></div>
+      <div class="fval" style="color:var(--bear)">2</div></div>
+    <div class="frow" style="margin-top:16px;padding-top:12px;border-top:1px dashed var(--border)">
+      <div class="flabel" style="color:var(--subtext)">Expected by pure chance</div>
+      <div class="ftrack" style="background:transparent"></div>
+      <div class="fval" style="color:var(--subtext)">~36,900</div></div>
+  </div>
+  <figcaption>Cells clearing |t| &gt; 3 under progressively honest treatment of
+  dependence. Bar length is log-scaled. <strong>Correcting for cross-contract
+  clustering alone already leaves fewer survivors (14,438) than chance would produce
+  (~36,900)</strong> — i.e. once you stop double-counting correlated contracts, there
+  is no aggregate evidence of predictability left to explain.</figcaption>
+</figure>
+
+<h3>The mechanism, family by family</h3>
+
+<p>If t-inflation is really driven by cross-contract correlation, the excess should
+scale with how many correlated contracts each family carries. It does — almost
+monotonically. This is the diagnostic that turns a suspicion into a conclusion:</p>
+
+<figure>
+  <div class="scroll"><table>
+    <thead><tr><th>Family</th><th>Cells</th><th>Contracts / date</th>
+      <th>|t|&gt;3</th><th>Excess vs chance</th><th></th></tr></thead>
+    <tbody>
+      <tr><td>calendars</td><td class="num">2,027,242</td><td class="num">90</td><td class="num">776,192</td><td class="num">141.8×</td><td><div class="bar"><span style="width:100%"></span></div></td></tr>
+      <tr><td>outrights</td><td class="num">1,909,348</td><td class="num">12</td><td class="num">554,038</td><td class="num">107.5×</td><td><div class="bar"><span style="width:75.8%"></span></div></td></tr>
+      <tr><td>cracks</td><td class="num">1,555,918</td><td class="num">10</td><td class="num">201,370</td><td class="num">47.9×</td><td><div class="bar"><span style="width:33.8%"></span></div></td></tr>
+      <tr><td>semestral</td><td class="num">1,893,451</td><td class="num">9</td><td class="num">191,940</td><td class="num">37.6×</td><td><div class="bar"><span style="width:26.5%"></span></div></td></tr>
+      <tr><td>brent_wti</td><td class="num">1,633,387</td><td class="num">10</td><td class="num">158,146</td><td class="num">35.9×</td><td><div class="bar"><span style="width:25.3%"></span></div></td></tr>
+      <tr><td>quarterly</td><td class="num">1,960,798</td><td class="num">11</td><td class="num">164,131</td><td class="num">31.0×</td><td><div class="bar"><span style="width:21.9%"></span></div></td></tr>
+      <tr><td>yearly</td><td class="num">1,722,784</td><td class="num">5</td><td class="num">132,187</td><td class="num">28.4×</td><td><div class="bar"><span style="width:20.0%"></span></div></td></tr>
+      <tr><td><strong>flies</strong></td><td class="num">972,097</td><td class="num">2</td><td class="num">10,955</td><td class="num">4.2×</td><td><div class="bar"><span style="width:2.9%"></span></div></td></tr>
+    </tbody>
+  </table></div>
+  <figcaption>Excess of |t|&gt;3 cells over the chance baseline, against cross-sectional
+  multiplicity. <code>flies</code> — a butterfly, <code>A − 2B + C</code>, which cancels
+  the common curve level and is therefore the most idiosyncratic structure here — shows
+  a 4.2× excess. <code>calendars</code>, with 90 co-moving contracts a day, shows 142×.
+  The statistic is measuring contract correlation, not predictability.</figcaption>
+</figure>
+
+<div class="card verdict warn">
+  <h3>Read <code>flies</code> differently from everything else</h3>
+  <p style="margin-bottom:0">Because a butterfly nets out the level factor, its cells are
+  far closer to independent than any other family's. <code>flies</code> is the one place
+  in this dataset where a t-statistic is worth roughly what it says. Everywhere else,
+  divide by something between 3 and 10 before believing it.</p>
+</div>
+
+<h2><span class="num">02</span>What actually survives: bucket monotonicity</h2>
+
+<p>A single cell's t-statistic is cheap. A <em>monotone gradient</em> across
+low → mid → high is not — noise has no reason to order itself. Across the 1,344
+single-indicator (indicator × horizon × family) triplets:</p>
+
+<div class="hero">
+  <div class="stat good"><div class="v">48.4%</div>
+    <div class="l">of triplets are monotone in bucket, against 33% expected by chance</div></div>
+  <div class="stat"><div class="v">8 / 192</div>
+    <div class="l">indicator × family pairs monotone at <em>all seven</em> horizons</div></div>
+  <div class="stat bad"><div class="v">2</div>
+    <div class="l">cells surviving both corrections <em>and</em> the cost stub — out of 13.7M</div></div>
+</div>
+
+<p>The 48.4% is a real, if modest, excess: there <em>is</em> structure in these
+indicators. But note what the third number says — the two cells that survive
+everything are <code>k=4</code>, horizon 1, <code>n</code>=58 and 57. Out of 13.7
+million tested. Those are noise, and a good example of why the ranking file must not
+be read as a shortlist.</p>
+
+<figure>
+  <div class="legend"><span><i style="background:var(--s2)"></i>Monotone rate</span>
+    <span><i style="background:var(--amber)"></i>33% chance baseline</span></div>
+  <div class="scroll"><table>
+    <thead><tr><th>Family</th><th>Monotone</th><th></th></tr></thead>
+    <tbody>
+      <tr><td>quarterly</td><td class="num">58.9%</td><td><div class="bar" style="min-width:200px"><span style="width:58.9%"></span><span style="left:33%;width:2px;background:var(--amber)"></span></div></td></tr>
+      <tr><td>cracks</td><td class="num">54.2%</td><td><div class="bar" style="min-width:200px"><span style="width:54.2%"></span><span style="left:33%;width:2px;background:var(--amber)"></span></div></td></tr>
+      <tr><td>semestral</td><td class="num">54.2%</td><td><div class="bar" style="min-width:200px"><span style="width:54.2%"></span><span style="left:33%;width:2px;background:var(--amber)"></span></div></td></tr>
+      <tr><td>calendars</td><td class="num">50.6%</td><td><div class="bar" style="min-width:200px"><span style="width:50.6%"></span><span style="left:33%;width:2px;background:var(--amber)"></span></div></td></tr>
+      <tr><td>flies</td><td class="num">45.8%</td><td><div class="bar" style="min-width:200px"><span style="width:45.8%"></span><span style="left:33%;width:2px;background:var(--amber)"></span></div></td></tr>
+      <tr><td>outrights</td><td class="num">45.8%</td><td><div class="bar" style="min-width:200px"><span style="width:45.8%"></span><span style="left:33%;width:2px;background:var(--amber)"></span></div></td></tr>
+      <tr><td>yearly</td><td class="num">41.7%</td><td><div class="bar" style="min-width:200px"><span style="width:41.7%"></span><span style="left:33%;width:2px;background:var(--amber)"></span></div></td></tr>
+      <tr><td>brent_wti</td><td class="num">35.7%</td><td><div class="bar" style="min-width:200px"><span style="width:35.7%"></span><span style="left:33%;width:2px;background:var(--amber)"></span></div></td></tr>
+    </tbody>
+  </table></div>
+  <figcaption>Share of single-indicator triplets whose mean forward move is monotone
+  across low → mid → high. 168 triplets per family. <code>brent_wti</code> at 35.7% is
+  indistinguishable from chance — the Brent–WTI arb is the one book here where these
+  indicators say essentially nothing.</figcaption>
+</figure>
+
+<h2><span class="num">03</span>The one relationship worth your attention</h2>
+
+<p>Eight indicator × family pairs are monotone at all seven horizons. Three of them are
+the same indicator — <code>rsi_div_14</code>, the RSI-vs-price divergence — in three
+different spread families, all with the same sign, all with large samples.</p>
+
+<figure>
+  <svg viewBox="0 0 760 340" role="img" aria-label="rsi_div_14 high-minus-low forward move by horizon for three families">
+    <line class="axis" x1="60" y1="30" x2="60" y2="300"/>
+    <line class="axis" x1="60" y1="30" x2="740" y2="30"/>
+    <g class="grid">
+      <line x1="60" y1="120" x2="720" y2="120"/><line x1="60" y1="210" x2="720" y2="210"/>
+      <line x1="60" y1="300" x2="720" y2="300"/>
+    </g>
+    <g class="tick" text-anchor="end">
+      <text x="52" y="34">0.00</text><text x="52" y="124">−0.20</text>
+      <text x="52" y="214">−0.40</text><text x="52" y="304">−0.60</text>
+    </g>
+    <g class="tick" text-anchor="middle">
+      <text x="60" y="322">1</text><text x="95" y="322">2</text><text x="130" y="322">3</text>
+      <text x="199" y="322">5</text><text x="373" y="322">10</text>
+      <text x="546" y="322">15</text><text x="720" y="322">20</text>
+    </g>
+    <text class="tick" x="390" y="338" text-anchor="middle">horizon (trading bars)</text>
+
+    <polyline fill="none" stroke="#6EE7B7" stroke-width="2" stroke-linejoin="round"
+      points="60,32.3 95,40.1 130,49.7 199,69.9 373,120.2 546,161.1 720,184.3">
+      <title>calendars — high-bucket minus low-bucket forward move</title></polyline>
+    <polyline fill="none" stroke="#25B98A" stroke-width="2" stroke-linejoin="round"
+      points="60,36.8 95,43.4 130,52.2 199,70.4 373,105.8 546,132.8 720,149.5">
+      <title>quarterly — high-bucket minus low-bucket forward move</title></polyline>
+    <polyline fill="none" stroke="#0C7A57" stroke-width="2" stroke-linejoin="round"
+      points="60,38.8 95,50.8 130,69.8 199,102.8 373,155.2 546,237.5 720,292.2">
+      <title>yearly — high-bucket minus low-bucket forward move</title></polyline>
+
+    <g><circle cx="720" cy="184.3" r="4.5" fill="#6EE7B7" stroke="var(--surface)" stroke-width="2"><title>calendars, h=20: −0.343 pts</title></circle>
+       <circle cx="720" cy="149.5" r="4.5" fill="#25B98A" stroke="var(--surface)" stroke-width="2"><title>quarterly, h=20: −0.266 pts</title></circle>
+       <circle cx="720" cy="292.2" r="4.5" fill="#0C7A57" stroke="var(--surface)" stroke-width="2"><title>yearly, h=20: −0.583 pts</title></circle></g>
+    <text class="slabel" fill="#6EE7B7" x="728" y="182">calendars</text>
+    <text class="slabel" fill="#25B98A" x="728" y="147">quarterly</text>
+    <text class="slabel" fill="#0C7A57" x="728" y="290">yearly</text>
+  </svg>
+  <figcaption>High-bucket minus low-bucket mean forward move, in price points, for
+  <code>rsi_div_14</code>. Every line is monotone in horizon, same sign, three
+  independent families. Minimum bucket sample: 41,201 (calendars), 8,552 (quarterly),
+  2,943 (yearly). <strong>A smooth term structure like this is what a real effect looks
+  like</strong> — noise produces spikes at one horizon, not an ordered fan across seven.</figcaption>
+</figure>
+
+<p>The directional read is consistent too. At horizon 20, the low bucket is up
+48.6–51.9% of the time and the high bucket only 42.7–44.4% — a 5.0–9.2 point spread
+in directional accuracy that widens smoothly with horizon.</p>
+
+<div class="card verdict warn">
+  <h3>The sign is the opposite of the textbook</h3>
+  <p><code>rsi_div_14</code> is positive when momentum is <em>stronger</em> than price
+  action warrants — classically read as a <strong>bullish</strong> divergence. In this
+  dataset a high reading precedes <strong>lower</strong> forward moves, consistently,
+  across three families and seven horizons.</p>
+  <p style="margin-bottom:0">Before acting on that, rule out the boring explanation: the
+  feature is built from z-scored changes, so a high reading also tags rows where price
+  recently fell. What looks like "fade the divergence" may just be short-horizon
+  continuation of the move that created it. That is a one-afternoon test, and it decides
+  whether this is a signal or a re-description of momentum.</p>
+</div>
+
+<h3>The other five are weaker, and one is a warning</h3>
+
+<div class="scroll"><table>
+  <thead><tr><th>Family</th><th>Indicator</th><th>Max spread (pts)</th>
+    <th>Cost stub</th><th>Min n</th><th>Sense</th></tr></thead>
+  <tbody>
+    <tr><td>yearly</td><td>rsi_div_14</td><td class="num">0.583</td><td class="num">0.020</td><td class="num">2,943</td><td>reversion</td></tr>
+    <tr><td>calendars</td><td>rsi_div_14</td><td class="num">0.343</td><td class="num">0.010</td><td class="num">41,201</td><td>reversion</td></tr>
+    <tr><td>quarterly</td><td>rsi_div_14</td><td class="num">0.266</td><td class="num">0.010</td><td class="num">8,552</td><td>reversion</td></tr>
+    <tr><td>brent_wti</td><td>vol_ratio</td><td class="num">0.237</td><td class="num">0.020</td><td class="num">2,291</td><td>momentum</td></tr>
+    <tr><td>calendars</td><td>mom_20</td><td class="num">0.224</td><td class="num">0.010</td><td class="num">37,389</td><td>momentum</td></tr>
+    <tr><td>quarterly</td><td>vol_ratio</td><td class="num">0.181</td><td class="num">0.010</td><td class="num">8,299</td><td>reversion</td></tr>
+    <tr><td>quarterly</td><td>variance_ratio_5</td><td class="num">0.165</td><td class="num">0.010</td><td class="num">4,634</td><td>reversion</td></tr>
+    <tr><td>calendars</td><td>vol_ratio</td><td class="num">0.131</td><td class="num">0.010</td><td class="num">41,369</td><td>reversion</td></tr>
+  </tbody>
+</table></div>
+
+<p><code>vol_ratio</code> appears three times <em>with inconsistent sign</em> —
+momentum in <code>brent_wti</code>, reversion in <code>quarterly</code> and
+<code>calendars</code>. An indicator that flips direction by family is not a signal
+you can carry across the book; treat it as family-specific at best, overfit at worst.
+<code>rsi_div_14</code>'s value is precisely that it does <em>not</em> do this.</p>
+
+<h2><span class="num">04</span>What this says about the live scoring engine</h2>
+
+<p>Here is the most actionable item in the report. The Opportunity Score already
+carries an <code>rsi_div_term</code>. Its fitted weights:</p>
+
+<div class="scroll"><table>
+  <thead><tr><th>Family</th><th>rsi_div_term</th><th>macd_div_term</th><th>mom_decel_term</th></tr></thead>
+  <tbody>
+    <tr><td>quarterly</td><td class="num" style="color:var(--bear)">0.0000</td><td class="num">0.0569</td><td class="num">0.0310</td></tr>
+    <tr><td>semestral</td><td class="num" style="color:var(--amber)">0.0054</td><td class="num">0.0518</td><td class="num">0.0365</td></tr>
+    <tr><td>yearly</td><td class="num" style="color:var(--bear)">0.0000</td><td class="num">0.0000</td><td class="num">0.0000</td></tr>
+  </tbody>
+</table></div>
+
+<p>The weight search zeroed out the one indicator this sweep identifies as the most
+stable relationship in the entire dataset. That is not necessarily a contradiction —
+it is a clue, and the mechanism is visible in the code:</p>
+
+<div class="card">
+<p style="margin-top:0"><code>rsi_div_term</code> is scored through
+<code>_agree_mag(row, cal, "rsi_div_14", _dir_px_range(level))</code>, which returns
+the magnitude <em>only when the divergence's sign agrees with the direction implied by
+level-based mean reversion</em>, and <code>0.0</code> otherwise.</p>
+<p style="margin-bottom:0">But the effect this sweep found is <strong>unconditional</strong>
+— it shows up on <code>rsi_div_14</code> alone, with no reference to level. A gate that
+discards the signal whenever it disagrees with level-reversion will throw away roughly
+half the information, and the weight search will then quite correctly assign the
+gutted term near-zero weight. <em>The term may be worthless because of how it is gated,
+not because the indicator is uninformative.</em></p>
+</div>
+
+<h2><span class="num">05</span>Recommendations</h2>
+
+<div class="rec">
+  <h3><span class="tag t-hi">Do first</span> Test an ungated <code>rsi_div_term</code></h3>
+  <p style="margin-bottom:0">Add a variant scored on <code>rsi_div_14</code>'s own signed
+  percentile — no <code>_dir_px_range(level)</code> gate — and re-run the weight search
+  on <code>quarterly</code>, <code>semestral</code> and <code>yearly</code>. If the
+  ungated form takes meaningful weight where the gated one took zero, the sweep has
+  found a real gap in the scoring engine. This is a contained change with a clear
+  falsifiable outcome.</p>
+</div>
+
+<div class="rec">
+  <h3><span class="tag t-hi">Do first</span> Settle the divergence sign question</h3>
+  <p style="margin-bottom:0">Regress the forward move on <code>rsi_div_14</code> while
+  controlling for recent price change (<code>mom_5</code> / <code>mom_10</code>). If the
+  divergence effect vanishes once you control for the move that produced it, this is
+  momentum wearing a different hat and should not become a separate term. Cheap to run,
+  and it gates everything above.</p>
+</div>
+
+<div class="rec">
+  <h3><span class="tag t-md">Next</span> Report a clustered t-statistic, not the raw one</h3>
+  <p style="margin-bottom:0">The current <code>t_stat</code> column invites exactly the
+  wrong inference, and <code>top_cells.csv</code> ranks on it. Add a
+  <code>t_clustered</code> column that divides by <code>√(contracts_per_date × horizon)</code>,
+  and rank on that instead. Keep the raw column for continuity, but the ranking file —
+  the artifact anyone will actually open — should lead with the honest number.</p>
+</div>
+
+<div class="rec">
+  <h3><span class="tag t-md">Next</span> Promote on gradient, not on significance</h3>
+  <p style="margin-bottom:0">Add a monotonicity screen to the pipeline: for each
+  indicator, require the mean to be ordered across low → mid → high <em>and</em> the
+  bucket spread to grow with horizon. That screen reduced 13.7M cells to eight candidate
+  relationships and surfaced the only one worth investigating. It is a far better filter
+  than any t-threshold, and it is a dozen lines of code.</p>
+</div>
+
+<div class="rec">
+  <h3><span class="tag t-lo">Then</span> Give <code>flies</code> more attention than its size suggests</h3>
+  <p style="margin-bottom:0">It is the least contaminated family in the study — 2
+  contracts a day, level factor netted out, a 4.2× excess where calendars shows 142×.
+  Statistical work done on flies is worth more per cell than anywhere else in the book,
+  even though it is the smallest family. Consider running it at finer bucket resolution.</p>
+</div>
+
+<div class="rec">
+  <h3><span class="tag t-lo">Then</span> Replace the cost stubs before any P&amp;L claim</h3>
+  <p style="margin-bottom:0"><code>COST_STUB_POINTS</code> is flagged
+  <code>TODO(fase-0)</code> in the source and ranges 0.01–0.03 points. Every
+  "beats cost" mark in this report is measured against a placeholder. The
+  <code>rsi_div_14</code> spreads (0.27–0.58 pts at h=20) clear it by an order of
+  magnitude, so the conclusion is unlikely to flip — but the margin is unquantified
+  until real bid/offer and slippage go in.</p>
+</div>
+
+<div class="rec">
+  <h3><span class="tag t-lo">Then</span> Stop before k=4</h3>
+  <p style="margin-bottom:0">The 4-way combinations contributed 3,544 of 5,015
+  combinations and the overwhelming majority of the 13.7M cells — and produced nothing
+  that survived. Every relationship worth reporting came from <code>k=1</code>. Running
+  at <code>--max-k 2</code> would cut the output roughly 60-fold and lose nothing that
+  this run demonstrated. Deep conditioning here buys narrower cells, not more information.</p>
+</div>
+
+<h2><span class="num">06</span>Which indicators to combine</h2>
+
+<div class="card verdict">
+  <h3>First: two of your 24 indicators are the same indicator</h3>
+  <p><code>pctb_10_1_5</code> is an <strong>exact affine transform</strong> of
+  <code>z_10</code>, and <code>pctb_20_2</code> of <code>z_20</code>. Bollinger %B
+  expands to <code>(z + k) / 2k</code> — so with quantile bucketing, which is
+  rank-based, they produce <em>byte-identical</em> bucket codes. Verified both
+  algebraically (rank correlation 1.0000000000) and in the output.</p>
+  <p style="margin-bottom:0">They cost ~8% of the run for zero information. Theme
+  exclusivity saved you from ever pairing them — they both sit in <code>level</code> —
+  but they should come out of <code>FEATURES</code>. The <code>level</code> theme has
+  six entries and four distinct measurements.</p>
+</div>
+
+<p>A pair earns its place only if the second indicator keeps a consistent gradient
+<em>inside every bucket</em> of the first — otherwise it is re-slicing one effect, not
+adding a second. Across 11,970 pair × horizon cells, 18.0% clear that bar against ~6%
+expected by chance. Requiring it in <strong>both</strong> directions at <strong>all
+seven</strong> horizons with n ≥ 100 leaves just eight pairs:</p>
+
+<div class="scroll"><table>
+  <thead><tr><th>Family</th><th>Pair</th><th>Themes</th><th>Lift vs best single</th><th>Min n</th></tr></thead>
+  <tbody>
+    <tr><td>outrights</td><td><code>variance_ratio_5</code> × <code>dir_persistence_20</code></td><td>regime × quality</td><td class="num">3.0×</td><td class="num">1,782</td></tr>
+    <tr><td>quarterly</td><td><code>vol_ratio</code> × <code>variance_ratio_5</code></td><td>volatility × regime</td><td class="num">2.1×</td><td class="num">1,354</td></tr>
+    <tr><td>cracks</td><td><code>z_20</code> × <code>dir_persistence_20</code></td><td>level × quality</td><td class="num">1.8×</td><td class="num">291</td></tr>
+    <tr><td>quarterly</td><td><code>rsi_div_14</code> × <code>vol_ratio</code></td><td>exhaustion × volatility</td><td class="num">1.7×</td><td class="num">2,317</td></tr>
+    <tr><td>quarterly</td><td><code>rsi_div_14</code> × <code>variance_ratio_5</code></td><td>exhaustion × regime</td><td class="num">1.6×</td><td class="num">1,348</td></tr>
+    <tr><td>brent_wti</td><td><code>z_10</code> × <code>ema_align</code></td><td>level × direction</td><td class="num">5.4×</td><td class="num">125</td></tr>
+  </tbody>
+</table></div>
+<p style="color:var(--subtext);font-size:13px;margin-top:-4px">The two duplicate-driven
+rows are collapsed. <code>brent_wti</code>'s 5.4× rests on n=125 in the thinnest cell
+and sits in the family whose monotone rate (35.7%) is indistinguishable from chance —
+treat it as noise, not the best result.</p>
+
+<h3>The recommendation: the <code>quarterly</code> reversion triangle</h3>
+
+<p>Three of the eight pairs are the same three indicators —
+<code>rsi_div_14</code>, <code>vol_ratio</code>, <code>variance_ratio_5</code> — pairwise
+robust in <code>quarterly</code>. Exhaustion × volatility × regime is a coherent
+mean-reversion story, not three unrelated survivors, and it is the family that already
+carries fitted weights.</p>
+
+<figure>
+  <div class="legend">
+    <span><i style="background:#0C7A57"></i>forward move up (points)</span>
+    <span><i style="background:#3A4441"></i>flat</span>
+    <span><i style="background:#B0393D"></i>forward move down</span>
+  </div>
+  <div class="scroll"><table style="min-width:460px">
+    <thead><tr><th><code>rsi_div_14</code> ↓ &nbsp;/&nbsp; <code>vol_ratio</code> →</th>
+      <th>low</th><th>mid</th><th>high</th></tr></thead>
+    <tbody>
+      <tr><td>low</td>
+        <td class="num" style="background:rgba(16,185,129,.30)">+0.2396</td>
+        <td class="num" style="background:rgba(16,185,129,.16)">+0.1147</td>
+        <td class="num" style="background:rgba(16,185,129,.04)">+0.0113</td></tr>
+      <tr><td>mid</td>
+        <td class="num" style="background:rgba(16,185,129,.10)">+0.0714</td>
+        <td class="num" style="background:rgba(139,150,145,.14)">−0.0041</td>
+        <td class="num" style="background:rgba(229,72,77,.17)">−0.1288</td></tr>
+      <tr><td>high</td>
+        <td class="num" style="background:rgba(229,72,77,.14)">−0.1080</td>
+        <td class="num" style="background:rgba(229,72,77,.14)">−0.1040</td>
+        <td class="num" style="background:rgba(229,72,77,.32)">−0.2514</td></tr>
+    </tbody>
+  </table></div>
+  <figcaption>Mean 20-bar forward move in points, <code>quarterly</code>. Every row
+  falls left→right and every column falls top→bottom — a genuine bivariate gradient.
+  Corner spread <strong>0.491 pts</strong> against <strong>0.266</strong> for
+  <code>rsi_div_14</code> alone, so the second indicator nearly doubles the separation.
+  Cell samples run 2,317–3,600, all well clear of the floor. Cost stub for
+  <code>quarterly</code> is 0.010 pts.</figcaption>
+</figure>
+
+<p><code>rsi_div_14</code> × <code>variance_ratio_5</code> gives the same picture
+(+0.2098 → −0.2095, monotone both ways), which is what you want to see: the two
+partners of the same anchor tell a consistent story rather than each finding its own
+private structure.</p>
+
+<h3>What to put in the dashboard</h3>
+<ol>
+  <li><strong>Remove <code>pctb_10_1_5</code> and <code>pctb_20_2</code></strong> from
+  <code>FEATURES</code>. Free, and it stops the UI implying confirmation between two
+  copies of one measurement.</li>
+  <li><strong>Anchor on <code>rsi_div_14</code></strong> — the only indicator with a
+  monotone gradient at every horizon in three independent families — after settling the
+  sign question in §03.</li>
+  <li><strong>Pair it with <code>vol_ratio</code>, and read <code>variance_ratio_5</code>
+  as corroboration.</strong> Both partners are already scored terms
+  (<code>vol_term</code>, <code>autocorr_term</code> family), so this is a weighting
+  change, not new machinery.</li>
+  <li><strong>Keep it to two.</strong> Nothing at k=3 or k=4 survived. The pair is the
+  useful unit here.</li>
+  <li><strong>Do not carry this to other families.</strong> The robust pairs differ per
+  family — <code>outrights</code> wants regime × quality, <code>cracks</code> wants
+  level × quality. And <code>vol_ratio</code> flips sign between families, so it must be
+  fitted per family, never shared.</li>
+</ol>
+
+<h2><span class="num">07</span>What this study cannot tell you</h2>
+
+<ul>
+  <li><strong>It is in-sample by selection.</strong> Every input is point-in-time — the
+  cutoffs are expanding quantiles over strictly prior dates, verified — but choosing a
+  cell because it looks good is still fitting. Nothing here has been confirmed on
+  held-out dates.</li>
+  <li><strong>No costs, no sizing, no execution.</strong> These are raw point moves
+  measured close-to-close from a next-bar-open anchor. Nothing is netted for spread,
+  slippage or commission.</li>
+  <li><strong>The deflation factors are heuristics, not a formal correction.</strong>
+  <code>√(h·m)</code> assumes perfect correlation within a date and across an overlapping
+  window; the truth sits between the raw and fully-deflated columns. A block bootstrap
+  over dates would replace the bracket with a number.</li>
+  <li><strong>Hit rate is direction-agnostic.</strong> It counts "price rose", not "the
+  trade won". For a short thesis, read <code>1 − hit_rate</code>.</li>
+  <li><strong>Bucket boundaries drift.</strong> A given raw indicator value can be
+  <code>mid</code> in 2014 and <code>low</code> in 2023. That is correct and deliberate,
+  but it means a cell is not a fixed threshold rule — read
+  <code>&lt;family&gt;_cutoffs.parquet</code> to recover what applied on any date.</li>
+</ul>
+
+<div class="foot">
+  Generated from <code>docs/reports/bucket_sweep/</code> ·
+  sweep by <code>scripts/run_bucket_sweep.py</code> ·
+  library <code>backtesting/research/bucket_sweep.py</code> (offline) ·
+  branch <code>indicator-bucket-sweep</code>.<br>
+  Decision-support only. This tool does not execute or size trades.
+</div>
+
+</div>
+</body>
+</html>

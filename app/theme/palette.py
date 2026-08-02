@@ -412,6 +412,23 @@ def inject_css() -> None:
             background: transparent !important;
         }}
 
+        /* Caveat panel — measured limits of the score. Amber, always visible. */
+        .cw-caveat {{
+            display: flex; gap: 13px; align-items: flex-start;
+            background: {SURFACE}; border: 1px solid {BORDER};
+            border-left: 4px solid {AMBER}; border-radius: 14px;
+            padding: 15px 20px; margin: 2px 0 18px;
+        }}
+        .cw-caveat .ico {{ color: {AMBER}; flex: none; font-size: 19px; line-height: 1.2; }}
+        .cw-caveat .txt {{ color: {SUBTEXT}; font-size: 15px; line-height: 1.6; flex: 1; }}
+        .cw-caveat .txt p {{ margin: 0 0 10px; }}
+        .cw-caveat .txt p:last-child {{ margin-bottom: 0; }}
+        .cw-caveat .txt b {{ color: {TEXT}; font-weight: 700; }}
+        .cw-caveat .txt code {{
+            background: {SURFACE_2}; border-radius: 4px; padding: 1px 5px;
+            font-size: .92em; color: {TEXT};
+        }}
+
         /* Block intro panel — the block's explanation as a carded info note. */
         .cw-intro {{
             display: flex; gap: 13px; align-items: flex-start;
@@ -677,6 +694,21 @@ def signal_chip(family: str, bias_label: str, conviction: float, tone: str) -> N
             <div class="fam">{family}</div>
             <div class="bias"><span class="cw-sig-ico">{glyph}</span>{bias_label}</div>
             <div class="conv">{conv}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def caveat_note(html: str) -> None:
+    """Render an amber-accented caveat panel — the honest-limits counterpart to
+    ``cw-intro``. Always visible, never behind an expander: a limitation the user
+    has to open a disclosure to find is a limitation they will not read."""
+    st.markdown(
+        f"""
+        <div class="cw-caveat">
+            <div class="ico">&#9888;</div>
+            <div class="txt">{html}</div>
         </div>
         """,
         unsafe_allow_html=True,

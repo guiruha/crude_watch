@@ -1,8 +1,16 @@
 """Tests for the Opportunity Score engine."""
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
+
+ROOT = Path(__file__).resolve().parents[1]
+APP = ROOT / "app"
+if str(APP) not in sys.path:
+    sys.path.insert(0, str(APP))
 
 from crudewatch.research import build_dataset
 from crudewatch.scoring import (
@@ -15,7 +23,8 @@ from crudewatch.scoring import (
     signed_pct,
 )
 from crudewatch.scoring.blocks import block_direction, regime_label
-from crudewatch.scoring.score import BlockScores, compute_blocks, compute_opportunity
+from crudewatch.scoring.score import BlockScores, WEIGHTS, _attach_bar_counts, compute_blocks, compute_opportunity
+from core.scoring import _historical_abs_composite
 
 
 def _outright_frame(
@@ -78,8 +87,19 @@ def test_block_ranges_and_opportunity_bounds():
     assert -100.0 <= blocks.level <= 100.0
     assert 0.0 <= blocks.p_reversion <= 1.0
     assert 0.0 <= blocks.p_continuation <= 1.0
-    assert 0.0 <= blocks.confidence <= 100.0
     assert -100.0 <= opp <= 100.0
+
+
+def test_vectorized_historical_composite_matches_canonical_path():
+    data = _multi_contract_dataset()
+    cal = fit_calibrator(data, "outrights", horizon=25)
+    enriched = _attach_bar_counts(data)
+    canonical = []
+    for _, row in enriched.iterrows():
+        blocks = compute_blocks(row, cal, int(row["_n_contract_bars"]))
+        canonical.append(abs(compute_opportunity(blocks, row, cal)))
+    vectorized = _historical_abs_composite(data, cal, float(WEIGHTS["transition_shrink"]), sort=False)
+    assert np.allclose(vectorized, np.asarray(canonical, dtype=float), atol=1e-10)
 
 
 def _with_regime(blocks: BlockScores, regime: str) -> BlockScores:
@@ -91,7 +111,6 @@ def _with_regime(blocks: BlockScores, regime: str) -> BlockScores:
         level=blocks.level,
         p_reversion=blocks.p_reversion,
         p_continuation=blocks.p_continuation,
-        confidence=blocks.confidence,
     )
 
 
@@ -155,9 +174,7 @@ def test_score_family_columns_and_no_nan_opportunity():
         "level",
         "p_reversion",
         "p_continuation",
-        "confidence",
         "opportunity",
-        "action",
     }
     assert expected_cols.issubset(set(out.columns))
     assert len(out) == data["contract"].nunique()
@@ -198,6 +215,22 @@ def test_analogous_outcomes_structure_and_point_in_time():
     assert coh_asof["n"] <= coh["n"]
 
 
+def test_analogous_outcomes_neutral_threshold_has_no_aligned_claim():
+    data = _multi_contract_dataset()
+    coh = analogous_outcomes(data, "outrights", "CLA", horizon=25, action_threshold=101.0)
+    assert coh["side"] == 0.0
+    assert "avg_aligned" not in coh
+    assert "aligned_win_rate" not in coh
+
+
+def test_analogous_outcomes_aligned_move_is_net_of_cost():
+    data = _multi_contract_dataset()
+    coh = analogous_outcomes(data, "outrights", "CLA", horizon=25, action_threshold=0.0, cost=0.25)
+    if coh["n"] > 0 and coh["side"] != 0.0:
+        assert np.isclose(coh["avg_aligned"], coh["avg_aligned_gross"] - 0.25)
+        assert coh["cost"] == 0.25
+
+
 def test_block_direction_positive_on_uptrend():
     """Strongly up-trending synthetic contract yields direction > 0."""
     closes = list(70.0 + np.arange(120) * 0.5)
@@ -208,11 +241,9 @@ def test_block_direction_positive_on_uptrend():
     assert direction > 0
 
 
-def test_nan_level_panel_still_scores_with_lower_confidence():
+def test_nan_level_panel_still_scores():
     data = _multi_contract_dataset()
-    full = score_instrument(data, "outrights", "CLA", horizon=25)
     data_nan = data.copy()
     data_nan.loc[data_nan["contract"] == "CLA", ["level_pct", "level_z"]] = np.nan
     nan = score_instrument(data_nan, "outrights", "CLA", horizon=25)
     assert nan.opportunity == nan.opportunity
-    assert nan.blocks.confidence <= full.blocks.confidence

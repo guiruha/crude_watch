@@ -23,6 +23,7 @@ def _setup_with_injected(seed=0):
     n = len(df)
     df["macd_div"] = np.linspace(-10.0, 10.0, n)
     df["er_drop_20"] = np.linspace(-5.0, 5.0, n)
+    df["rsi_div_14"] = np.linspace(-8.0, 8.0, n)
     cal = fit_calibrator(df, "outrights", 25)
     sub = df[df["contract"] == "A"].sort_values("date").reset_index(drop=True)
     return df, cal, sub
@@ -38,11 +39,6 @@ def _er_drop_extremes(cal):
     return float(-ecdf[-1]), float(-ecdf[0])
 
 
-def _autocorr_extremes(cal):
-    ecdf = cal.ecdf["autocorr_20"]
-    return float(ecdf[0]), float(ecdf[-1])
-
-
 def _ema_align_extremes(cal):
     ecdf = cal.ecdf["ema_align"]
     return float(ecdf[0]), float(ecdf[-1])
@@ -56,12 +52,21 @@ def test_ecdf_features_extended():
 def test_new_keys_present_in_canonical_order():
     assert RANGE_TERM_KEYS == (
         "rev_term", "lvl_term", "timing_term", "vol_term",
-        "macd_div_term", "rsi_div_term", "mom_decel_term", "er_drop_term", "autocorr_term",
+        "macd_div_term", "rsi_div_term", "mom_decel_term", "er_drop_term",
     )
     assert TREND_TERM_KEYS == (
         "dir_term", "qual_term", "cont_term", "ext_low",
-        "ema_align_term", "mom10_term", "r2_term", "dirpers_term",
+        "ema_align_term", "mom10_term", "dirpers_term",
     )
+
+
+def test_retired_terms_are_gone():
+    """autocorr_term and r2_term were retired: below-chance bucket structure."""
+    from crudewatch.scoring.score import RETIRED_TERM_KEYS
+    assert RETIRED_TERM_KEYS == ("autocorr_term", "r2_term")
+    for key in RETIRED_TERM_KEYS:
+        assert key not in RANGE_TERMS and key not in TREND_TERMS
+        assert key not in RANGE_TERM_KEYS and key not in TREND_TERM_KEYS
 
 
 def test_all_terms_unit_interval_and_nan_safe():
@@ -131,29 +136,45 @@ def test_er_drop_term_polarity():
     assert term_pos < 0.5
 
 
-def test_autocorr_term_polarity():
-    _, cal, sub = _setup(0)
+def test_rsi_div_term_is_ungated():
+    """rsi_div_term fires on magnitude alone, unlike the still-gated macd_div_term.
+
+    The gated form returns 0.0 whenever the feature's sign disagrees with the
+    level-implied reversion direction. rsi_div_14 carries an unconditional
+    relationship, so its term must respond on both sides.
+    """
+    _, cal, sub = _setup_with_injected(0)
     b = compute_blocks(sub.iloc[10], cal, 11)
-    low, high = _autocorr_extremes(cal)
+    ecdf = cal.ecdf["rsi_div_14"]
+    lo, hi = float(np.min(ecdf)), float(np.max(ecdf))
 
-    row_low = sub.iloc[10].copy()
-    row_low["autocorr_20"] = low
-    row_high = sub.iloc[10].copy()
-    row_high["autocorr_20"] = high
+    vals = []
+    for v in (lo, hi):
+        row = sub.iloc[10].copy()
+        row["rsi_div_14"] = v
+        vals.append(RANGE_TERMS["rsi_div_term"](b, row, cal, b.level, b.direction))
 
-    term_low = RANGE_TERMS["autocorr_term"](b, row_low, cal, b.level, b.direction)
-    term_high = RANGE_TERMS["autocorr_term"](b, row_high, cal, b.level, b.direction)
-    assert term_low > term_high
-    assert term_low > 0.5
-    assert term_high < 0.5
+    # Both tails carry conviction; a gated term would zero exactly one of them.
+    assert all(x > 0.5 for x in vals), vals
+
+    # The gated neighbour still zeroes one side, proving the two now differ.
+    gated = []
+    for v in (float(np.min(cal.ecdf["macd_div"])), float(np.max(cal.ecdf["macd_div"]))):
+        row = sub.iloc[10].copy()
+        row["macd_div"] = v
+        gated.append(RANGE_TERMS["macd_div_term"](b, row, cal, b.level, b.direction))
+    assert min(gated) == 0.0
 
 
 def test_nan_term_is_zero():
     _, cal, sub = _setup()
     b = compute_blocks(sub.iloc[5], cal, 6)
     row = sub.iloc[5].copy()
-    row["r2_20"] = np.nan
-    assert TREND_TERMS["r2_term"](b, row, cal, b.level, b.direction) == 0.0
+    row["dir_persistence_20"] = np.nan
+    assert TREND_TERMS["dirpers_term"](b, row, cal, b.level, b.direction) == 0.0
+    row_rd = sub.iloc[5].copy()
+    row_rd["rsi_div_14"] = np.nan
+    assert RANGE_TERMS["rsi_div_term"](b, row_rd, cal, b.level, b.direction) == 0.0
 
     _, cal_inj, sub_inj = _setup_with_injected(0)
     b_inj = compute_blocks(sub_inj.iloc[5], cal_inj, 6)

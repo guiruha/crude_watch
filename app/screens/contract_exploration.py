@@ -35,7 +35,7 @@ class ContractExplorationScreen:
 
     def display(self, selection: Selection) -> None:
         title_block(
-            "Contract Exploration",
+            "Exploración",
             "Historia de precios completa del contrato seleccionado en el menú superior.",
         )
 
@@ -64,12 +64,12 @@ class ContractExplorationScreen:
         close = series["close"]
         cols = st.columns(6)
         cells = [
-            ("Last", f"{close.iloc[-1]:.2f}"),
-            ("Min", f"{close.min():.2f}"),
-            ("Max", f"{close.max():.2f}"),
-            ("Mean", f"{close.mean():.2f}"),
-            ("Observations", f"{len(series):,}"),
-            ("Span", f"{series['date'].min():%b %Y} \u2013 {series['date'].max():%b %Y}"),
+            ("Último", f"{close.iloc[-1]:.2f}"),
+            ("Mín", f"{close.min():.2f}"),
+            ("Máx", f"{close.max():.2f}"),
+            ("Media", f"{close.mean():.2f}"),
+            ("Observaciones", f"{len(series):,}"),
+            ("Periodo", f"{series['date'].min():%b %Y} \u2013 {series['date'].max():%b %Y}"),
         ]
         for col, (label, value) in zip(cols, cells):
             col.metric(label, value)
@@ -84,13 +84,13 @@ class ContractExplorationScreen:
             fill_to_zero=fill,
             color=CHART_ACCENT,
         )
-        st.plotly_chart(fig, width="stretch")
+        st.plotly_chart(fig, use_container_width=True)
 
     def _render_table(self, series: pd.DataFrame) -> None:
-        with st.expander("Underlying data"):
+        with st.expander("Datos base"):
             cols = [c for c in ("date", "contract", "close", "volume") if c in series.columns]
             st.dataframe(
                 series[cols].sort_values("date", ascending=False),
-                width="stretch",
+                width=1200,
                 hide_index=True,
             )

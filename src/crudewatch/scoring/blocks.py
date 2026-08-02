@@ -12,7 +12,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from pandas.tseries.offsets import BusinessDay
 
 from crudewatch.research.dataset import regime_thresholds as _regime_thresholds
 
@@ -124,11 +123,19 @@ def fit_calibrator(
 
     ``outcome_asof`` makes the calibration point-in-time for a historical scoring
     date: the conditional reversion / continuation probabilities then only use
-    rows whose forward window had already been *realised* by that date (a row at
-    ``t`` resolves ``horizon`` business days later), so the probabilities never
-    peek past ``outcome_asof``. Percentile / regime cut-offs already rely solely
-    on as-of-``t`` features, so they are unaffected.
+    rows whose forward window had already been realised by that date. Realisation
+    is checked with the actual contract row at ``t+h``, not a generic business-day
+    offset.
     """
+    if outcome_asof is not None and {"contract", "date"}.issubset(data.columns):
+        ordered = data.sort_values(["contract", "date"]).copy()
+        target_dates = ordered.groupby("contract", sort=False)["date"].shift(-horizon)
+        asof = pd.Timestamp(outcome_asof)
+        data = ordered.loc[pd.to_datetime(ordered["date"]) <= asof]
+        target_dates = target_dates.loc[data.index]
+    else:
+        target_dates = None
+
     target = f"fwd_{horizon}"
     er = data["er_20"].to_numpy(dtype=float)
     # ER carries warmup NaNs; np.quantile would propagate them into the tercile
@@ -156,10 +163,10 @@ def fit_calibrator(
     slope = data["slope_20"].to_numpy(dtype=float) if "slope_20" in data.columns else np.full(len(data), np.nan)
     fwd = data[target].to_numpy(dtype=float) if target in data.columns else np.full(len(data), np.nan)
 
-    # Point-in-time probabilities: drop outcomes that had not yet resolved by the
-    # scoring date (a row at t is realised ~horizon business days later).
-    if outcome_asof is not None and "date" in data.columns:
-        realised = (pd.to_datetime(data["date"]) + BusinessDay(horizon)).to_numpy()
+    # Point-in-time probabilities: drop outcomes whose actual t+h contract row had
+    # not resolved by the scoring date.
+    if outcome_asof is not None and target_dates is not None:
+        realised = pd.to_datetime(target_dates.reindex(data.index)).to_numpy()
         fwd = np.where(realised <= np.datetime64(pd.Timestamp(outcome_asof)), fwd, np.nan)
 
     range_mask = er <= er_lo
@@ -280,6 +287,9 @@ def _reversion_confirmations(level: float, row: pd.Series, calibrator: FamilyCal
     pctb = row.get("pctb_20_2", np.nan)
     if pctb == pctb:
         out.append(_clip01((pctb - 0.8) / 0.2 if dear else (0.2 - pctb) / 0.2))
+    pctb_fast = row.get("pctb_10_1_5", np.nan)
+    if pctb_fast == pctb_fast:
+        out.append(_clip01((pctb_fast - 0.8) / 0.2 if dear else (0.2 - pctb_fast) / 0.2))
     div = row.get("rsi_div_14", np.nan)
     if div == div:
         out.append(_clip01(-div / 1.5 if dear else div / 1.5))
@@ -317,21 +327,6 @@ def block_p_continuation(direction: float, trendiness: float, calibrator: Family
         return 0.5
     w = trendiness / 100.0
     return float(0.5 + (p_base - 0.5) * w)
-
-
-def block_confidence(
-    row: pd.Series,
-    regime: str,
-    n_contract_bars: int,
-    calibrator: FamilyCalibrator,
-) -> float:
-    level_pct = row.get("level_pct", np.nan)
-    f_level = 1.0 if level_pct == level_pct else 0.4
-    f_bars = min(n_contract_bars / 40.0, 1.0)
-    f_regime = 1.0 if regime in ("range", "trend") else 0.5
-    ic_t = calibrator.ic_t_level
-    f_stability = min(ic_t / 3.0, 1.0) if ic_t == ic_t else 0.6
-    return float(100.0 * f_level * f_bars * f_regime * f_stability)
 
 
 def timing_term(row: pd.Series, calibrator: FamilyCalibrator) -> float:

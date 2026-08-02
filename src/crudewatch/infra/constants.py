@@ -72,6 +72,20 @@ FAMILY_LABELS: dict[str, str] = {
     "flies": "Butterflies",
 }
 
+# USD value of a 1.00 price-point move for one displayed contract/spread unit.
+# WTI futures and quoted WTI-linked spreads are in dollars per barrel over 1,000
+# barrels. This is a PnL display multiplier, not an exchange margin model.
+FAMILY_POINT_VALUE_USD: dict[str, float] = {
+    "outrights": 1000.0,
+    "calendars": 1000.0,
+    "cracks": 1000.0,
+    "brent_wti": 1000.0,
+    "quarterly": 1000.0,
+    "semestral": 1000.0,
+    "yearly": 1000.0,
+    "flies": 1000.0,
+}
+
 # Default filesystem locations (relative to the repo root).
 RAW_DEFAULT = Path("data/raw_files.xlsx")
 PROCESSED_DEFAULT = Path("data/processed")

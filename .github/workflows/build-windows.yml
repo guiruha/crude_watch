@@ -1,9 +1,5 @@
 name: Build Windows executable
 
-# Produces a self-contained CrudeWatch.exe (no Python/Docker needed on the
-# target machine). Data is baked in, so the repo used here must contain
-# data/raw_files.xlsx (keep the repo private if that data is sensitive).
-
 on:
   workflow_dispatch:
   push:
@@ -28,13 +24,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[app,build]"
 
-      - name: Pre-build parquet cache (bakes data for instant startup)
+      - name: Pre-build parquet cache
         run: python scripts/prebuild_cache.py
 
       - name: Build executable
         run: pyinstaller CrudeWatch.spec --noconfirm
 
-      - name: Upload artifact
+      - name: Upload executable
         uses: actions/upload-artifact@v4
         with:
           name: CrudeWatch-windows

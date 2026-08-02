@@ -8,7 +8,6 @@ from crudewatch.scoring.blocks import (
     signed_pct,
 )
 from crudewatch.scoring.score import (
-    FAMILY_WEIGHTS,
     WEIGHTS,
     BlockScores,
     InstrumentScore,
@@ -28,7 +27,6 @@ __all__ = [
     "BlockScores",
     "InstrumentScore",
     "FamilyCalibrator",
-    "FAMILY_WEIGHTS",
     "WEIGHTS",
     "weights_for",
     "BacktestResult",

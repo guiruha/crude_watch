@@ -30,6 +30,10 @@ def _auth_configured() -> bool:
         return False
 
 
+def _auth_supported() -> bool:
+    return all(hasattr(st, name) for name in ("user", "login", "logout"))
+
+
 def _allowed_emails() -> set[str]:
     try:
         raw = st.secrets.get("access", {}).get("allowed_emails", [])
@@ -42,6 +46,15 @@ def require_login() -> None:
     """Block the app until a permitted user is signed in (no-op when unconfigured)."""
     if not _auth_configured():
         return
+    if not _auth_supported():
+        version = getattr(st, "__version__", "desconocida")
+        st.error(
+            "Google login está configurado, pero esta sesión está usando "
+            f"Streamlit {version}, que no soporta autenticación nativa. "
+            "Arranca la app con `uv run streamlit run app/main.py` para usar "
+            "el entorno del proyecto."
+        )
+        st.stop()
 
     if not getattr(st.user, "is_logged_in", False):
         _login_screen()
@@ -77,25 +90,34 @@ def _auth_styles() -> None:
         .cw-auth-rule {{ height: 1px; background: {BORDER}; margin: 30px 0 24px; }}
         .cw-auth-note {{ color: {TEXT}; font-size: 20px; opacity: .9; line-height: 1.65; }}
         .cw-auth-note b {{ color: {ACCENT}; }}
-        /* Sign-in button: matches the card (dark surface, same border), a touch bigger. */
+        /* Sign-in button: large, centred, and clearly primary. */
         div[class*="st-key-cw_login_btn"], div[class*="st-key-cw_denied_btn"] {{
-            max-width: 380px !important; margin: 40px auto 0 !important;
+            width: min(100%, 460px) !important; margin: 42px auto 0 !important;
         }}
         div[class*="st-key-cw_login_btn"] button, div[class*="st-key-cw_denied_btn"] button {{
-            background: {SURFACE} !important; border: 1px solid {BORDER} !important;
-            border-radius: 14px !important; padding: 17px 0 !important; font-weight: 700 !important;
-            box-shadow: 0 12px 34px -22px #000 !important;
+            width: 100% !important; min-height: 66px !important;
+            background: {SURFACE} !important;
+            border: 1px solid {ACCENT}88 !important;
+            border-radius: 16px !important;
+            padding: 0 28px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 14px !important;
+            font-weight: 800 !important;
+            box-shadow: inset 0 0 0 1px {ACCENT}22, 0 18px 42px -28px {ACCENT} !important;
             transition: border-color .15s ease, box-shadow .15s ease;
         }}
         div[class*="st-key-cw_login_btn"] button:hover, div[class*="st-key-cw_denied_btn"] button:hover {{
             border-color: {ACCENT} !important; background: {SURFACE} !important;
-            box-shadow: inset 0 0 0 1px {ACCENT}55, 0 14px 32px -18px {ACCENT} !important;
+            box-shadow: inset 0 0 0 1px {ACCENT}66, 0 20px 46px -24px {ACCENT} !important;
         }}
         div[class*="st-key-cw_login_btn"] button p, div[class*="st-key-cw_denied_btn"] button p {{
-            color: {TEXT} !important; font-size: 17px !important; letter-spacing: .2px;
+            color: {TEXT} !important; font-size: 21px !important; letter-spacing: .1px;
+            line-height: 1 !important;
         }}
         div[class*="st-key-cw_login_btn"] button span, div[class*="st-key-cw_denied_btn"] button span {{
-            color: {ACCENT} !important;
+            color: {ACCENT} !important; font-size: 1.55rem !important;
         }}
         </style>
         """,
@@ -126,10 +148,7 @@ def _login_screen() -> None:
         '<div class="cw-auth-note">This is a <b>private</b> tool. '
         "Please sign in with an authorised Google account to continue.</div>"
     )
-    if st.button(
-        "Sign in with Google", key="cw_login_btn", type="primary",
-        width="stretch", icon=":material/login:",
-    ):
+    if st.button("Sign in with Google", key="cw_login_btn", icon=":material/login:"):
         st.login()
 
 
@@ -139,15 +158,19 @@ def _denied_screen(email: str) -> None:
         f"<b>{email or 'you used'}</b> is not authorised to access CrudeWatch.<br>"
         "Ask the owner to add your email, or sign in with a different account.</div>"
     )
-    if st.button("Sign out", key="cw_denied_btn", width="stretch", icon=":material/logout:"):
+    if st.button("Sign out", key="cw_denied_btn", icon=":material/logout:"):
         st.logout()
 
 
 def sidebar_account() -> None:
     """Show the signed-in user and a sign-out control (when auth is active)."""
-    if not _auth_configured() or not getattr(st.user, "is_logged_in", False):
+    if (
+        not _auth_configured()
+        or not _auth_supported()
+        or not getattr(st.user, "is_logged_in", False)
+    ):
         return
     email = getattr(st.user, "email", "") or "signed in"
     st.caption(f"Signed in as {email}")
-    if st.button("Sign out", width="stretch"):
+    if st.button("Sign out"):
         st.logout()

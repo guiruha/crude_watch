@@ -21,11 +21,13 @@ if _SRC.is_dir() and str(_SRC) not in sys.path:
 
 from core.auth import require_login, sidebar_account
 from core.data import load_frames
+from core.preload import start_preload
 from core.selection import render_selection_bar
-from screens.backtest import BacktestScreen
+from core.self_assessment import self_assessment_status, start_self_assessment
 from screens.component import ComponentScreen
 from screens.contract_exploration import ContractExplorationScreen
-from screens.opportunity import OpportunityScreen
+from screens.curve import CurveScreen
+from screens.pm import PMScreen
 from theme.palette import (
     inject_css,
     nav_label,
@@ -44,25 +46,24 @@ inject_css()
 
 # name -> screen class. New screens slot in here.
 SCREENS = {
-    "Contract Exploration": ContractExplorationScreen,
-    "Opportunity Score": OpportunityScreen,
+    "PM": PMScreen,
+    "Curva": CurveScreen,
+    "Exploración": ContractExplorationScreen,
     "Régimen": lambda frames: ComponentScreen(frames, "regime"),
     "Dirección": lambda frames: ComponentScreen(frames, "direction"),
     "Fuerza": lambda frames: ComponentScreen(frames, "strength"),
     "Nivel": lambda frames: ComponentScreen(frames, "level"),
     "Probabilidades": lambda frames: ComponentScreen(frames, "probabilities"),
-    "Fiabilidad": lambda frames: ComponentScreen(frames, "confidence"),
-    "Backtest": BacktestScreen,
+    "Evidencia": lambda frames: ComponentScreen(frames, "evidence"),
 }
 
-# The per-block breakdown screens (marked with an info icon in the nav).
 _INFO_SCREENS = {
     "Régimen",
     "Dirección",
     "Fuerza",
     "Nivel",
     "Probabilidades",
-    "Fiabilidad",
+    "Evidencia",
 }
 
 
@@ -79,28 +80,77 @@ def _dataset_summary(frames: dict[str, pd.DataFrame]) -> dict[str, str]:
         dates = outrights["date"]
         span = f"{dates.min():%b %Y} \u2013 {dates.max():%b %Y}"
     return {
-        "Families": str(len(frames)),
-        "Contracts": f"{contracts:,}",
-        "Coverage": span,
+        "Familias": str(len(frames)),
+        "Contratos": f"{contracts:,}",
+        "Cobertura": span,
     }
+
+
+def _assessment_summary(status: dict) -> dict[str, str]:
+    state = status.get("state")
+    if state == "done":
+        agreement = status.get("agreement", float("nan"))
+        lo = status.get("ci_low", float("nan"))
+        hi = status.get("ci_high", float("nan"))
+        if agreement != agreement:
+            rate = "sin muestra"
+            ci = "—"
+        else:
+            rate = f"{agreement * 100:.0f}%"
+            ci = f"{lo * 100:.0f}-{hi * 100:.0f}%"
+        return {
+            "Medida": "top-1 por fecha",
+            "Acuerdo top-1": rate,
+            "IC 95%": ci,
+            "Muestra": f"{int(status.get('usable', 0))}/{int(status.get('inspected', 0))}",
+            "Warm-up": f"+{int(status.get('warmup_years', 3))} años",
+        }
+    if state == "error":
+        return {"Estado": "error", "Detalle": str(status.get("error", ""))[:28]}
+    return {
+        "Estado": "calculando",
+        "Medida": "top-1 por fecha",
+        "Muestra": "~200 fechas",
+        "Warm-up": f"+{int(status.get('warmup_years', 3))} años",
+    }
+
+
+if hasattr(st, "fragment"):
+
+    @st.fragment(run_every="10s")
+    def _self_assessment_card(family: str, horizon: int) -> None:
+        start_self_assessment(family, horizon)
+        sidebar_card(_assessment_summary(self_assessment_status(family, horizon)))
+
+else:
+
+    def _self_assessment_card(family: str, horizon: int) -> None:
+        start_self_assessment(family, horizon)
+        sidebar_card(_assessment_summary(self_assessment_status(family, horizon)))
 
 
 def main() -> None:
     require_login()
     frames = load_frames()
+    selection = render_selection_bar()
+    start_preload(selection, list(frames))
 
     with st.sidebar:
         sidebar_brand()
         st.divider()
 
-        nav_label("Navigation")
+        nav_label("Navegación")
         choice = st.radio(
-            "Screen", list(SCREENS), format_func=_nav_format, label_visibility="collapsed"
+            "Pantalla", list(SCREENS), format_func=_nav_format, label_visibility="collapsed"
         )
 
         st.divider()
-        nav_label("Dataset")
+        nav_label("Datos")
         sidebar_card(_dataset_summary(frames))
+
+        st.divider()
+        nav_label("Autoevaluación")
+        _self_assessment_card(selection.family, selection.horizon)
 
         sidebar_account()
         sidebar_footer("CrudeWatch \u00b7 v0.1 \u00b7 Data: CME / ICE")
@@ -109,7 +159,6 @@ def main() -> None:
             unsafe_allow_html=True,
         )
 
-    selection = render_selection_bar()
     SCREENS[choice](frames).display(selection)
 
 

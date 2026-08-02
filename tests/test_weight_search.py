@@ -28,10 +28,8 @@ from crudewatch.scoring.weight_search import (
 )
 from test_backtest import _synthetic_family
 
-_EQ_RANGE = np.zeros(len(RANGE_TERM_KEYS))
-_EQ_RANGE[:4] = 0.25
-_EQ_TREND = np.zeros(len(TREND_TERM_KEYS))
-_EQ_TREND[:4] = 0.25
+_EQ_RANGE = np.full(len(RANGE_TERM_KEYS), 1.0 / len(RANGE_TERM_KEYS))
+_EQ_TREND = np.full(len(TREND_TERM_KEYS), 1.0 / len(TREND_TERM_KEYS))
 
 
 def test_precompute_matches_compute_opportunity_equal_weights():
@@ -96,7 +94,7 @@ def test_simplex_samples_valid():
     assert s.shape == (55, 4)                       # equal + 4 one-hots + 50
     assert np.all(s >= -1e-12)
     assert np.allclose(s.sum(axis=1), 1.0)
-    assert np.allclose(s[0], 0.25)                  # equal-weight first
+    assert np.allclose(s[0], 0.25)                  # equal-weight first for dim=4
     assert np.allclose(s[1:5], np.eye(4))           # one-hots
 
 

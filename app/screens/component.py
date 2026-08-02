@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import html
-import math
 import re
 
 import numpy as np
@@ -12,6 +11,7 @@ import streamlit as st
 
 from crudewatch.infra import FAMILY_LABELS
 
+from core.evidence import MIN_EFFECTIVE_N, evidence_read
 from core.scoring import (
     analogous_outcomes_cached,
     calibrator_cached,
@@ -108,7 +108,7 @@ COMPONENTS: dict[str, dict] = {
         "label": "Fuerza",
         "kind": "unit100",
         "help": (
-            "Mide la **calidad** de la tendencia (**0–100**): ¿es una **recta limpia y operable** o "
+            "Mide la **calidad** de la tendencia (**0–100**): ¿es una **recta limpia y persistente** o "
             "un movimiento **ruidoso y entrecortado**? Responde al *cómo de buena* es, y así completa "
             "a *Dirección* (hacia dónde) y a *Régimen* (si existe).\n\n"
             "Combina la **linealidad** del recorrido —lo bien que una recta explica el precio— con la "
@@ -117,7 +117,7 @@ COMPONENTS: dict[str, dict] = {
             "medir."
         ),
         "read": (
-            "**Alta** = tendencia nítida y fiable para operar a favor. **Baja** = movimiento sucio "
+            "**Alta** = tendencia nítida y persistente. **Baja** = movimiento sucio "
             "donde las señales de tendencia valen poco, aunque exista dirección."
         ),
         "calc": (
@@ -171,9 +171,10 @@ COMPONENTS: dict[str, dict] = {
             "**revierta** hacia su media dentro del horizonte elegido. Es el juego de **rango**, "
             "calibrado con la propia historia de la familia.\n\n"
             "Se calcula como **tasa condicional** *point-in-time*: de todas las veces que la familia "
-            "estuvo cara o barata en rango, ¿qué fracción revirtió a favor a D+h? Esa tasa base se "
+            "estuvo cara o barata en rango, ¿qué fracción revirtió a D+h? Esa tasa base se "
             "**modula** con indicadores de agotamiento (RSI, Bollinger %B, divergencias, "
-            "desaceleración de momentum): más confirmación acerca la probabilidad a la tasa histórica."
+            "desaceleración de momentum, caída de eficiencia y volatilidad): más confirmación acerca "
+            "la probabilidad a la tasa histórica."
         ),
         "read": (
             "Se lee **junto a Nivel**: Nivel te dice *cuán* extremo estás; esta probabilidad, *con "
@@ -182,18 +183,24 @@ COMPONENTS: dict[str, dict] = {
         ),
         "calc": (
             "**Tasa histórica condicional:** de todas las veces que la familia estuvo **barata o cara** "
-            "(tercil extremo de nivel) en régimen de rango, ¿qué fracción **revirtió a favor** a D+h? "
+            "(tercil extremo de nivel) en régimen de rango, ¿qué fracción **revirtió** a D+h? "
             "Estrictamente *point-in-time*. Esa tasa base se **modula por una confirmación** = media "
             "(peso igual) de varios indicadores de agotamiento/oscilador/divergencia orientados al lado "
-            "del extremo: RSI(2), RSI(14), Bollinger %B, divergencia RSI y desaceleración de momentum. "
-            "Más confirmación → más se acerca la probabilidad a la tasa histórica."
+            "del extremo: RSI(2), RSI(14), Bollinger %B lento/rápido, divergencias RSI/MACD, "
+            "desaceleración de momentum, caída de Efficiency Ratio y ratio de volatilidad. "
+            "Todos entran con lectura equitativa; más confirmación → más se acerca la probabilidad "
+            "a la tasa histórica."
         ),
         "features": [
             ("rsi_2", "RSI(2): sobreventa (<20) o sobrecompra (>80) de muy corto plazo; confirma la reversión."),
             ("rsi_14", "RSI(14): sobreventa (<30) o sobrecompra (>70) de medio plazo."),
             ("pctb_20_2", "Bollinger %B (20,2): >1 por encima de la banda superior (caro), <0 bajo la inferior (barato)."),
+            ("pctb_10_1_5", "Bollinger %B rápido (10,1.5): extremo de corto plazo contra bandas más sensibles."),
             ("rsi_div_14", "Divergencia RSI(14) vs precio: + alcista (precio cae pero RSI aguanta), − bajista."),
+            ("macd_div", "Divergencia MACD vs precio: + alcista, − bajista; mide desacople de momentum."),
             ("mom_decel_10", "Desaceleración de momentum: negativo = el impulso se agota (precursor de reversión)."),
+            ("er_drop_20", "Caída del Efficiency Ratio (20): negativo = la tendencia pierde limpieza y se vuelve más reversible."),
+            ("vol_ratio", "Ratio de volatilidad 10/50: expansión o contracción de volatilidad frente a su régimen reciente."),
         ],
     },
     "p_continuation": {
@@ -240,26 +247,23 @@ COMPONENTS: dict[str, dict] = {
         ),
         "features": [],
     },
-    "confidence": {
-        "label": "Fiabilidad",
-        "kind": "reliability",
+    "evidence": {
+        "label": "Evidencia histórica",
+        "kind": "evidence",
         "help": (
-            "Es el **track record** del setup actual: cuando la familia ha estado en el **mismo "
-            "régimen y el mismo nivel** que hoy, ¿con qué frecuencia **acertó seguir la acción** del "
-            "modelo, y con qué consistencia?\n\n"
-            "No es un número inventado: se toma el **cohorte de casos análogos** con su resultado ya "
-            "realizado a D+h (*point-in-time*) y se calcula la **cota inferior de Wilson** del % de "
-            "acierto — es decir, el acierto **penalizado por el tamaño de muestra**."
+            "Es el **cohorte auditable** del setup actual: cuando la familia ha estado en el "
+            "**mismo régimen y el mismo nivel**, qué pasó después a D+h.\n\n"
+            "No se reduce a una métrica sintética. Presenta el cohorte completo que puede "
+            "auditarse: número de casos, movimiento medio, signo del composite y excursión adversa."
         ),
         "read": (
-            "**Alta** solo si hubo muchos casos y salieron bien; con **pocos casos** baja aunque el % "
-            "histórico parezca bueno. Trátala como *cuánto fiarte* del resto de bloques."
+            "Primero mira **n**. Después compara el movimiento medio con el mejor/peor cierre futuro. El hit rate solo "
+            "tiene sentido si la muestra no es raquítica."
         ),
         "calc": (
             "Se toma el **cohorte de setups análogos** (mismo régimen + mismo bucket de nivel, calibrado "
-            "por familia) con su resultado a D+h. La **Fiabilidad (0–100)** es la **cota inferior de "
-            "Wilson** del % de acierto siguiendo la acción: el acierto **penalizado por el tamaño de "
-            "muestra** (pocos casos → fiabilidad baja aunque el % sea alto)."
+            "por familia) con su resultado a D+h, siempre en base ejecutable y point-in-time. "
+            "La pantalla enseña los resultados observados; no los convierte en un indicador agregado."
         ),
         "features": [],
     },
@@ -291,8 +295,12 @@ FEATURE_CTX: dict[str, dict] = {
     "rsi_2": {"label": "RSI(2)", "reflines": [(20.0, "20"), (80.0, "80")]},
     "rsi_14": {"label": "RSI(14)", "reflines": [(30.0, "30"), (70.0, "70")]},
     "pctb_20_2": {"label": "Bollinger %B (20,2)", "reflines": [(0.0, "0"), (1.0, "1")]},
+    "pctb_10_1_5": {"label": "Bollinger %B (10,1.5)", "reflines": [(0.0, "0"), (1.0, "1")]},
     "rsi_div_14": {"label": "Divergencia RSI(14)", "reflines": [(0.0, "0")]},
+    "macd_div": {"label": "Divergencia MACD", "reflines": [(0.0, "0")]},
     "mom_decel_10": {"label": "Desaceleración de momentum", "reflines": [(0.0, "0")]},
+    "er_drop_20": {"label": "Caída ER (20)", "reflines": [(0.0, "0")]},
+    "vol_ratio": {"label": "Ratio volatilidad 10/50", "reflines": [(0.5, "0.5"), (1.0, "1"), (2.0, "2")]},
 }
 
 
@@ -354,9 +362,12 @@ FEATURE_ICON: dict[str, str] = {
     "rsi_2": ":material/speed:",
     "rsi_14": ":material/speed:",
     "pctb_20_2": ":material/waterfall_chart:",
+    "pctb_10_1_5": ":material/waterfall_chart:",
     "rsi_div_14": ":material/call_split:",
     "macd_div": ":material/call_split:",
     "mom_decel_10": ":material/trending_down:",
+    "er_drop_20": ":material/ssid_chart:",
+    "vol_ratio": ":material/candlestick_chart:",
 }
 
 
@@ -384,10 +395,10 @@ def _reading(key: str, value) -> str:
 
     if key == "er_20":
         if v >= 0.50:
-            return "Tendencia clara"
+            return "Recorrido eficiente"
         if v >= 0.35:
-            return "Algo direccional"
-        return "Rango / ruido"
+            return "Recorrido parcialmente direccional"
+        return "Recorrido ruidoso / de rango"
     if key == "r2_20":
         if v >= 0.60:
             return "Tendencia limpia"
@@ -395,17 +406,21 @@ def _reading(key: str, value) -> str:
             return "Tendencia moderada"
         return "Sin tendencia lineal"
     if key == "variance_ratio_5":
-        if v >= 1.15:
-            return "Persistente (tendencia)"
+        if v >= 1.25:
+            return "Persistencia fuerte"
+        if v >= 1.05:
+            return "Persistencia leve"
         if v <= 0.85:
-            return "Reversión a la media"
-        return "Aleatorio (sin señal)"
+            return "Compresión / reversión"
+        if v <= 0.95:
+            return "Persistencia débil"
+        return "Neutral"
     if key == "autocorr_20":
         if v >= 0.10:
-            return "Persistencia"
+            return "Cambios persistentes"
         if v <= -0.10:
-            return "Reversión"
-        return "Sin memoria"
+            return "Reversión de corto plazo"
+        return "Cambios sin memoria clara"
     if key == "dir_persistence_20":
         if v >= 0.50:
             return "Muy direccional"
@@ -461,7 +476,7 @@ def _reading(key: str, value) -> str:
         if v < 70.0:
             return "Neutral"
         return "Sobrecompra"
-    if key == "pctb_20_2":
+    if key in ("pctb_20_2", "pctb_10_1_5"):
         if v <= 0.0:
             return "Bajo banda inferior (sobrevendido)"
         if v < 0.2:
@@ -483,6 +498,20 @@ def _reading(key: str, value) -> str:
         if v >= 0.3:
             return "Impulso acelerando"
         return "Impulso estable"
+    if key == "er_drop_20":
+        if v <= -0.10:
+            return "Tendencia perdiendo eficiencia"
+        if v >= 0.10:
+            return "Tendencia ganando eficiencia"
+        return "Eficiencia estable"
+    if key == "vol_ratio":
+        if v >= 2.0:
+            return "Volatilidad anormalmente alta"
+        if v >= 1.2:
+            return "Volatilidad expandiendo"
+        if v <= 0.5:
+            return "Volatilidad comprimida"
+        return "Volatilidad normal"
     return "—"
 
 
@@ -523,29 +552,6 @@ def _regime_sentence(regime: str, er, er_pct, family_label: str) -> str:
         f"Efficiency Ratio ({er_txt}) en el **percentil {pct_txt} de {family_label}**: zona "
         "intermedia, sin rango ni dirección claros (transición)."
     )
-
-
-def _wilson_lower(p: float, n: int, z: float = 1.96) -> float:
-    """Lower bound of the Wilson score interval for a proportion (shrinks with small n)."""
-    if n <= 0:
-        return 0.0
-    p = min(max(p, 0.0), 1.0)
-    denom = 1.0 + z * z / n
-    centre = p + z * z / (2 * n)
-    margin = z * math.sqrt(max(p * (1.0 - p) / n + z * z / (4 * n * n), 0.0))
-    return max(0.0, (centre - margin) / denom)
-
-
-def _reliability_label(rel: float | None, n: int) -> str:
-    if rel is None or n == 0:
-        return "Insuficiente (sin cohorte)"
-    if n < 15:
-        return "Insuficiente (muestra pequeña)"
-    if rel >= 58:
-        return "Alta"
-    if rel >= 50:
-        return "Media"
-    return "Baja"
 
 
 def _md_inline(text: str) -> str:
@@ -622,8 +628,8 @@ class ComponentScreen:
         if scored_date.normalize() != selection.as_of.normalize():
             st.caption(f"Última barra disponible ≤ fecha elegida: {scored_date:%d %b %Y}.")
 
-        if self.key == "confidence":
-            self._display_reliability(family, contract, horizon, as_of_iso, score)
+        if self.key == "evidence":
+            self._display_evidence(family, contract, horizon, as_of_iso, score)
         elif self.key == "probabilities":
             self._display_probabilities(family, contract, horizon, as_of_iso, scored_date, score)
         else:
@@ -761,7 +767,7 @@ class ComponentScreen:
             w = max(0.0, min(100.0, float(pct)))
             fam_reading = _reading_relative(pct)
             parts.append(
-                '<div class="cw-mctx-line"><span class="k">Vs familia</span> · percentil '
+                '<div class="cw-mctx-line"><span class="k">Lectura relativa</span> · percentil '
                 f'<b>{pct:.0f}</b> <span class="cw-mctx-bar"><span style="width:{w:.0f}%"></span></span>'
                 f' — <span class="cw-mctx-tag">{html.escape(fam_reading)}</span></div>'
             )
@@ -803,6 +809,11 @@ class ComponentScreen:
         return float((vals <= float(value)).mean() * 100.0)
 
     def _feature_table(self, features_meta, feats: dict, family: str, as_of) -> None:
+        st.caption(
+            "Las métricas no tienen por qué coincidir: cada una observa una dimensión distinta "
+            "del mercado. La lectura absoluta interpreta el valor por su escala propia; la lectura "
+            "relativa compara ese mismo valor con la historia de la familia."
+        )
         body = []
         for feat_key, meaning in features_meta:
             val = feats.get(feat_key)
@@ -844,20 +855,20 @@ class ComponentScreen:
             )
         st.markdown(
             '<div class="cw-ftab-wrap"><table class="cw-ftab"><thead><tr>'
-            "<th>Métrica</th><th>Valor</th><th>Lectura</th><th>Vs familia</th>"
+            "<th>Métrica</th><th>Valor</th><th>Lectura absoluta</th><th>Lectura relativa</th>"
             "<th>Percentil (familia)</th>"
             "</tr></thead><tbody>" + "".join(body) + "</tbody></table></div>",
             unsafe_allow_html=True,
         )
         st.caption(
-            "**Lectura**: qué concluye la métrica por su valor (absoluto). "
-            "**Vs familia** y **Percentil**: dónde cae ese valor frente a la historia de la familia. "
+            "**Lectura absoluta**: qué concluye la métrica por su valor y escala propia. "
+            "**Lectura relativa** y **Percentil**: dónde cae ese valor frente a la historia de la familia. "
             "Pasa el cursor por la **ⓘ** para ver qué mide cada métrica."
         )
 
-    # -- Fiabilidad (empirical reliability) ---------------------------------
+    # -- Historical evidence -------------------------------------------------
 
-    def _display_reliability(self, family, contract, horizon, as_of_iso, score) -> None:
+    def _display_evidence(self, family, contract, horizon, as_of_iso, score) -> None:
         meta = self.meta
         try:
             coh = analogous_outcomes_cached(family, contract, horizon, as_of_iso)
@@ -867,17 +878,17 @@ class ComponentScreen:
 
         n = int(coh.get("n", 0))
         win = coh.get("aligned_win_rate")
-        rel = _wilson_lower(float(win), n) * 100.0 if (n > 0 and win is not None) else None
+        read = evidence_read(score, coh)
 
         c1, c2, c3 = st.columns(3)
-        c1.metric(
-            "Fiabilidad",
-            "—" if rel is None else f"{rel:.0f}/100",
-            help="Cota inferior de Wilson del % de acierto siguiendo la acción: penaliza muestras pequeñas.",
-        )
-        c2.metric("Acierto histórico", "—" if win is None else f"{win * 100:.0f}%")
-        c3.metric("Casos análogos (n)", f"{n}")
-        st.caption(f"Lectura: **{_reliability_label(rel, n)}**.")
+        c1.metric("Casos análogos (n)", f"{n}")
+        c2.metric("Evidencia", read["label"])
+        if n < MIN_EFFECTIVE_N:
+            c3.metric("Raw", f"{int(coh.get('n_raw', n))}")
+            st.caption(read["detail"])
+        else:
+            c3.metric("Mediana con signo", _fmt(coh.get("median_aligned", coh.get("avg_fwd", float("nan"))), "+.3f"))
+            st.caption(read["detail"])
 
         _intro_card(meta["help"], meta.get("read"))
         if meta.get("calc"):
@@ -886,8 +897,8 @@ class ComponentScreen:
 
         if n == 0:
             st.info(
-                "Sin historia análoga suficiente para este setup a la fecha elegida: no hay base "
-                "para estimar la fiabilidad. Prueba otro contrato, familia o fecha."
+                "Sin historia análoga suficiente para este setup a la fecha elegida. "
+                "Prueba otro contrato, familia o fecha."
             )
             return
 
@@ -898,19 +909,20 @@ class ComponentScreen:
             f"ejecutable y point-in-time. n = {n} observaciones ya realizadas."
         )
 
-        cols = st.columns(4)
-        cols[0].metric("PnL medio (alineado)", _fmt(coh.get("avg_aligned", float("nan")), "+.3f"))
-        cols[1].metric("% subidas", _fmt(coh.get("up_rate", float("nan")) * 100, ".0f") + "%")
-        cols[2].metric("MFE media", _fmt(coh.get("avg_mfe", float("nan")), "+.3f"))
-        cols[3].metric("MAE media", _fmt(coh.get("avg_mae", float("nan")), "+.3f"))
+        if n >= MIN_EFFECTIVE_N:
+            cols = st.columns(4)
+            cols[0].metric("Mediana con signo", _fmt(coh.get("median_aligned", float("nan")), "+.3f"))
+            cols[1].metric("% subidas", _fmt(coh.get("up_rate", float("nan")) * 100, ".0f") + "%")
+            cols[2].metric("MAE p50", _fmt(coh.get("mae_p50", float("nan")), ".3f"))
+            cols[3].metric("MAE p80", _fmt(coh.get("mae_p80", float("nan")), ".3f"))
 
         left, right = st.columns(2)
         with left:
-            st.caption("Distribución de resultados análogos (alineados con la acción)")
+            st.caption("Distribución de resultados análogos con signo del composite")
             self._cohort_hist(coh)
         with right:
-            st.caption("Fiabilidad por horizonte (acierto siguiendo la acción)")
-            self._reliability_by_horizon(family, contract, as_of_iso)
+            st.caption("Evidencia por horizonte")
+            self._evidence_by_horizon(family, contract, as_of_iso)
 
         risks = score.get("risks", [])
         if risks:
@@ -928,21 +940,21 @@ class ComponentScreen:
         fig.add_vline(x=0.0, line_color=ACCENT, line_width=2)
         fig.add_annotation(
             x=0.0, y=1, yref="paper", yanchor="bottom", showarrow=False,
-            text=f"{pos:.0f}% a favor", font=dict(color=ACCENT, size=12),
+            text=f"{pos:.0f}% positivo", font=dict(color=ACCENT, size=12),
         )
-        fig.update_xaxes(title_text="Resultado alineado (pts)")
+        fig.update_xaxes(title_text="Resultado con signo (pts)")
         fig.update_yaxes(title_text="frecuencia")
-        st.plotly_chart(_base_layout(fig, 260), width="stretch")
+        st.plotly_chart(_base_layout(fig, 260), use_container_width=True)
 
-    def _reliability_by_horizon(self, family, contract, as_of_iso) -> None:
+    def _evidence_by_horizon(self, family, contract, as_of_iso) -> None:
         try:
             hz = horizon_outcomes_cached(family, contract, as_of_iso)
         except Exception as exc:
             st.caption(f"No se pudo calcular por horizonte: {exc}")
             return
-        valid = hz[(hz["n"] > 0) & hz["aligned_win_rate"].notna()]
+        valid = hz[(hz["n"] >= MIN_EFFECTIVE_N) & hz["aligned_win_rate"].notna()]
         if valid.empty:
-            st.caption("Sin acierto alineado por horizonte (setup sin dirección sugerida).")
+            st.caption("Sin tasa positiva por horizonte con n efectivo suficiente.")
             return
         y = valid["aligned_win_rate"] * 100.0
         fig = go.Figure(
@@ -955,7 +967,7 @@ class ComponentScreen:
         fig.add_hline(y=50, line_dash="dot", line_color=SUBTEXT)
         fig.update_xaxes(title_text="Horizonte (D+)")
         fig.update_yaxes(title_text="% acierto", range=[0, 100])
-        st.plotly_chart(_base_layout(fig, 260), width="stretch")
+        st.plotly_chart(_base_layout(fig, 260), use_container_width=True)
 
     def _render_score(self, blocks: dict, features: dict, percentiles: dict, family: str) -> None:
         kind = self.meta["kind"]
@@ -1056,7 +1068,7 @@ class ComponentScreen:
         )
         fig.update_xaxes(title_text="")
         fig.update_yaxes(title_text="frecuencia")
-        st.plotly_chart(_base_layout(fig, 260), width="stretch")
+        st.plotly_chart(_base_layout(fig, 260), use_container_width=True)
 
     def _ts_chart(self, family, contract, feat, as_of, reflines=None, bands=None) -> None:
         data = enriched_frame(family)
@@ -1130,7 +1142,7 @@ class ComponentScreen:
             # Reverse so time flows left→right toward expiry (high dte left, 0 right).
             fig.update_xaxes(title_text="días a vencimiento", autorange="reversed")
         fig.update_yaxes(title_text="")
-        st.plotly_chart(_base_layout(fig, 260), width="stretch")
+        st.plotly_chart(_base_layout(fig, 260), use_container_width=True)
         if n_analogs:
             st.caption(
                 f"En color: **{contract}**. Líneas tenues: {n_analogs} análogos anteriores "
@@ -1167,7 +1179,7 @@ class ComponentScreen:
         fig.add_vline(x=50, line_dash="dot", line_color=SUBTEXT)
         fig.update_xaxes(range=[0, 100], title_text="Probabilidad (%)")
         fig.update_yaxes(showticklabels=True, autorange="reversed")
-        st.plotly_chart(_base_layout(fig, 180), width="stretch")
+        st.plotly_chart(_base_layout(fig, 180), use_container_width=True)
         st.caption(
             "Frente al **50% de base**: por encima, el histórico de la familia favorece el "
             "escenario; por debajo, no aporta ventaja. La marcada con **⟵** es la que pesa "
@@ -1193,4 +1205,4 @@ class ComponentScreen:
             )
         )
         fig.update_yaxes(title_text="Cierre")
-        st.plotly_chart(_base_layout(fig, 260), width="stretch")
+        st.plotly_chart(_base_layout(fig, 260), use_container_width=True)

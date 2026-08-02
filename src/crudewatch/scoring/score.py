@@ -1,4 +1,4 @@
-"""Composite Opportunity Score, PM mapping, and public scoring API."""
+"""Composite stretch/persistence score and public scoring API."""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -9,7 +9,6 @@ import pandas as pd
 from crudewatch.scoring.blocks import (
     FamilyCalibrator,
     _clip01,
-    block_confidence,
     block_direction,
     block_level,
     block_p_continuation,
@@ -23,70 +22,29 @@ from crudewatch.scoring.blocks import (
     vol_term,
 )
 
-# Equal weighting for now: every term in a regime contributes the same (0.25
-# each, 4 terms per regime). Confidence is not part of the composite (it is an
-# empirical, informational block).
-WEIGHTS: dict[str, dict[str, float]] = {
-    "range": {
-        "rev_term": 0.25,
-        "lvl_term": 0.25,
-        "timing_term": 0.25,
-        "vol_term": 0.25,
-    },
-    "trend": {
-        "dir_term": 0.25,
-        "qual_term": 0.25,
-        "cont_term": 0.25,
-        "ext_low": 0.25,
-    },
-    "transition_shrink": 0.4,
-}
-
-import json
-from pathlib import Path
-
-_WEIGHTS_PATH = Path(__file__).with_name("family_weights.json")
-
-
-def _load_family_weights() -> dict[str, dict]:
-    try:
-        with open(_WEIGHTS_PATH) as fh:
-            raw = json.load(fh)
-    except (OSError, json.JSONDecodeError):
-        return {}
-    if not isinstance(raw, dict):
-        return {}
-    out: dict[str, dict] = {}
-    for fam, reg in raw.items():
-        if not isinstance(reg, dict):
-            continue
-        if "range" not in reg or "trend" not in reg:
-            continue
-        try:
-            out[fam] = {
-                "range": {k: float(v) for k, v in reg["range"].items()},
-                "trend": {k: float(v) for k, v in reg["trend"].items()},
-                "transition_shrink": float(reg.get("transition_shrink", WEIGHTS["transition_shrink"])),
-            }
-        except (TypeError, ValueError, AttributeError):
-            continue
-    return out
-
-
-FAMILY_WEIGHTS: dict[str, dict] = _load_family_weights()
+# Equal weighting: every active term in a regime contributes the same. The
+# individual raw indicators inside each block are also averaged equally in
+# ``blocks.py``. Historical evidence is shown separately from the composite.
+BASE_RANGE_TERM_KEYS: tuple[str, ...] = ("rev_term", "lvl_term", "timing_term", "vol_term")
+BASE_TREND_TERM_KEYS: tuple[str, ...] = ("dir_term", "qual_term", "cont_term", "ext_low")
 
 
 def weights_for(family: str) -> dict:
-    """Learned per-family weights, or the equal-weight default."""
-    return FAMILY_WEIGHTS.get(family, WEIGHTS)
+    """Equal weights for every family.
+
+    Weight-search artifacts may exist in the repository for research, but the
+    live dashboard intentionally runs one transparent equal-weight configuration.
+    """
+    return WEIGHTS
 
 
 FEATURE_SNAPSHOT: tuple[str, ...] = (
-    "z_10", "z_20", "z_50", "keltner_dist_20", "rsi_2",
-    "slope_20", "macd_hist", "ema_align", "mom_10",
-    "er_20", "r2_20", "variance_ratio_5",
-    "level_z", "level_pct", "mom_decel_10", "vol_ratio",
-    "mom_5", "mom_20", "autocorr_20", "dir_persistence_20",
+    "z_10", "z_20", "z_50", "pctb_20_2", "pctb_10_1_5",
+    "keltner_dist_20", "rsi_2", "rsi_14", "rsi_div_14", "macd_div",
+    "mom_decel_10", "er_drop_20", "vol_ratio", "slope_20", "macd_hist",
+    "ema_align", "mom_5", "mom_10", "mom_20", "er_20", "r2_20",
+    "variance_ratio_5", "autocorr_20", "dir_persistence_20",
+    "level_z", "level_pct",
 )
 
 
@@ -99,7 +57,6 @@ class BlockScores:
     level: float
     p_reversion: float
     p_continuation: float
-    confidence: float
 
 
 @dataclass(frozen=True)
@@ -111,7 +68,6 @@ class InstrumentScore:
     dte: float
     blocks: BlockScores
     opportunity: float
-    action: str
     rationale: list[str]
     risks: list[str]
     features: dict[str, float]
@@ -156,6 +112,22 @@ def _agree_mag(row, cal, feat, dir_px):
     return abs(signed) if s == dir_px else 0.0
 
 
+def _signed_mag(row, cal, feat):
+    """Ungated magnitude of ``feat``'s signed percentile, in ``[0, 1]``.
+
+    Same quantity :func:`_agree_mag` returns, minus the agreement gate. Used
+    where a feature carries an *unconditional* relationship to the forward
+    outcome — gating such a feature on agreement with the level-implied
+    reversion direction discards roughly half its information and drives its
+    fitted weight to zero. See the bucket-sweep findings report.
+    """
+    val = row.get(feat, np.nan)
+    if val != val:
+        return 0.0
+    p = percentile(cal.ecdf.get(feat, np.array([])), float(val))
+    return abs(2.0 * p - 1.0)
+
+
 def _mag_ecdf(row, cal, ecdf_key, src, neg=False, invert=False):
     val = row.get(src, np.nan)
     if val != val:
@@ -165,8 +137,8 @@ def _mag_ecdf(row, cal, ecdf_key, src, neg=False, invert=False):
     return _clip01(1.0 - p if invert else p)
 
 
-RANGE_TERM_KEYS: tuple[str, ...] = ("rev_term", "lvl_term", "timing_term", "vol_term")
-TREND_TERM_KEYS: tuple[str, ...] = ("dir_term", "qual_term", "cont_term", "ext_low")
+RANGE_TERM_KEYS: tuple[str, ...] = BASE_RANGE_TERM_KEYS
+TREND_TERM_KEYS: tuple[str, ...] = BASE_TREND_TERM_KEYS
 
 
 RANGE_TERMS: dict = {
@@ -184,19 +156,39 @@ TREND_TERMS: dict = {
 
 RANGE_TERMS.update({
     "macd_div_term": lambda b, row, cal, level, direction: _agree_mag(row, cal, "macd_div", _dir_px_range(level)),
-    "rsi_div_term": lambda b, row, cal, level, direction: _agree_mag(row, cal, "rsi_div_14", _dir_px_range(level)),
+    # Ungated on purpose: the bucket sweep found rsi_div_14 monotone in bucket at
+    # all seven horizons in three families with a fully consistent sign, i.e. an
+    # unconditional relationship. Gating it on the level-implied reversion
+    # direction (as macd_div_term still is) discarded that and fitted to ~0.
+    "rsi_div_term": lambda b, row, cal, level, direction: _signed_mag(row, cal, "rsi_div_14"),
     "mom_decel_term": lambda b, row, cal, level, direction: _mag_ecdf(row, cal, "neg_mom_decel_10", neg=True, src="mom_decel_10"),
     "er_drop_term": lambda b, row, cal, level, direction: _mag_ecdf(row, cal, "neg_er_drop_20", neg=True, src="er_drop_20"),
-    "autocorr_term": lambda b, row, cal, level, direction: _mag_ecdf(row, cal, "autocorr_20", invert=True, src="autocorr_20"),
 })
 TREND_TERMS.update({
     "ema_align_term": lambda b, row, cal, level, direction: _agree_mag(row, cal, "ema_align", _dir_px_trend(direction)),
     "mom10_term": lambda b, row, cal, level, direction: _agree_mag(row, cal, "mom_10", _dir_px_trend(direction)),
-    "r2_term": lambda b, row, cal, level, direction: _clip01(row.get("r2_20", np.nan)) if row.get("r2_20", np.nan) == row.get("r2_20", np.nan) else 0.0,
     "dirpers_term": lambda b, row, cal, level, direction: _clip01(row.get("dir_persistence_20", np.nan)) if row.get("dir_persistence_20", np.nan) == row.get("dir_persistence_20", np.nan) else 0.0,
 })
-RANGE_TERM_KEYS = (*RANGE_TERM_KEYS, "macd_div_term", "rsi_div_term", "mom_decel_term", "er_drop_term", "autocorr_term")
-TREND_TERM_KEYS = (*TREND_TERM_KEYS, "ema_align_term", "mom10_term", "r2_term", "dirpers_term")
+# Retired 2026-08-01 after the bucket sweep: autocorr_20 ordered forward outcomes
+# in only 17.9% of 56 family x horizon triplets and r2_20 in 23.2%, both *below*
+# the 33% expected by chance, while carrying non-zero fitted weight. Removed
+# rather than left at zero so the weight search cannot re-fit noise into them.
+RETIRED_TERM_KEYS: tuple[str, ...] = ("autocorr_term", "r2_term")
+
+RANGE_TERM_KEYS = (*RANGE_TERM_KEYS, "macd_div_term", "rsi_div_term", "mom_decel_term", "er_drop_term")
+TREND_TERM_KEYS = (*TREND_TERM_KEYS, "ema_align_term", "mom10_term", "dirpers_term")
+
+
+def _equal_weights(keys: tuple[str, ...]) -> dict[str, float]:
+    w = 1.0 / len(keys)
+    return {key: w for key in keys}
+
+
+WEIGHTS: dict[str, dict[str, float] | float] = {
+    "range": _equal_weights(RANGE_TERM_KEYS),
+    "trend": _equal_weights(TREND_TERM_KEYS),
+    "transition_shrink": 0.4,
+}
 
 
 def _range_opportunity(
@@ -262,7 +254,6 @@ def compute_blocks(
     level = block_level(row, calibrator)
     p_reversion = block_p_reversion(level, row, calibrator)
     p_continuation = block_p_continuation(direction, trendiness, calibrator)
-    confidence = block_confidence(row, regime, n_contract_bars, calibrator)
     return BlockScores(
         regime=regime,
         trendiness=trendiness,
@@ -271,33 +262,7 @@ def compute_blocks(
         level=level,
         p_reversion=p_reversion,
         p_continuation=p_continuation,
-        confidence=confidence,
     )
-
-
-def _base_action(regime: str, opportunity: float) -> str:
-    if opportunity >= 50:
-        return "Comprar debilidad" if regime == "range" else "Entrar (largo)"
-    if 20 <= opportunity < 50:
-        return "Sesgo largo — empezar pequeño"
-    if -20 < opportunity < 20:
-        return "Sin ventaja — esperar / no perseguir"
-    if -50 < opportunity <= -20:
-        return "Sesgo corto — reducir"
-    if opportunity <= -50:
-        return "Vender fortaleza" if regime == "range" else "Entrar (corto)"
-    return "Sin ventaja — esperar / no perseguir"
-
-
-def pm_action(blocks: BlockScores, opportunity: float) -> str:
-    """Single Spanish PM label from regime, opportunity, level and confidence."""
-    if blocks.regime == "trend" and abs(blocks.level) >= 80:
-        action = "Tomar beneficios — no perseguir"
-    else:
-        action = _base_action(blocks.regime, opportunity)
-    if blocks.confidence < 30 or blocks.regime == "transition":
-        action = f"Esperar confirmación — {action}"
-    return action
 
 
 def build_rationale(blocks: BlockScores, opportunity: float) -> list[str]:
@@ -313,7 +278,7 @@ def build_rationale(blocks: BlockScores, opportunity: float) -> list[str]:
         f"Nivel {blocks.level:+.0f} (+ = caro); P(reversión)={blocks.p_reversion:.2f}, "
         f"P(continuación)={blocks.p_continuation:.2f}."
     )
-    bullets.append(f"Oportunidad {opportunity:+.0f}.")
+    bullets.append(f"Signo interno {opportunity:+.0f}; se usa como color/rank, no como instrucción.")
     return bullets
 
 
@@ -332,7 +297,7 @@ def build_risks(
     if blocks.regime == "transition":
         risks.append("Régimen inestable (transición)")
     level_pct = row.get("level_pct", np.nan)
-    if level_pct != level_pct or blocks.confidence < 30:
+    if level_pct != level_pct:
         risks.append("Muestra histórica baja / sin panel análogo")
     lvl_term = min(abs(blocks.level) / 100.0, 1.0)
     if (
@@ -396,10 +361,10 @@ def score_instrument(
     """
     if as_of is not None:
         as_of = pd.Timestamp(as_of)
-        data = data.loc[pd.to_datetime(data["date"]) <= as_of]
         cal = calibrator if calibrator is not None else fit_calibrator(
             data, family, horizon, outcome_asof=as_of
         )
+        data = data.loc[pd.to_datetime(data["date"]) <= as_of]
     else:
         cal = calibrator if calibrator is not None else fit_calibrator(data, family, horizon)
     enriched = _attach_bar_counts(data)
@@ -418,7 +383,6 @@ def score_instrument(
         dte=float(row["dte"]),
         blocks=blocks,
         opportunity=opportunity,
-        action=pm_action(blocks, opportunity),
         rationale=build_rationale(blocks, opportunity),
         risks=build_risks(blocks, row, int(row["_n_contract_bars"])),
         features=_feature_snapshot(row),
@@ -464,9 +428,7 @@ def score_family(
                 "level": blocks.level,
                 "p_reversion": blocks.p_reversion,
                 "p_continuation": blocks.p_continuation,
-                "confidence": blocks.confidence,
                 "opportunity": opportunity,
-                "action": pm_action(blocks, opportunity),
             }
         )
 
@@ -483,9 +445,7 @@ def score_family(
         "level",
         "p_reversion",
         "p_continuation",
-        "confidence",
         "opportunity",
-        "action",
     ]
     if not rows:
         return pd.DataFrame(columns=columns)

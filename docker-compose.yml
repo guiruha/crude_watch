@@ -1,0 +1,18 @@
+services:
+  crudewatch:
+    build: .
+    image: crudewatch:latest
+    container_name: crudewatch
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8501:8501"
+    environment:
+      STREAMLIT_SERVER_HEADLESS: "true"
+      STREAMLIT_BROWSER_GATHERUSAGESTATS: "false"
+      STREAMLIT_SERVER_PORT: "8501"
+      STREAMLIT_SERVER_ADDRESS: "0.0.0.0"
+    volumes:
+      - crudewatch-cache:/srv/crudewatch/data/enriched
+
+volumes:
+  crudewatch-cache:
