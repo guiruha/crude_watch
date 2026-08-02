@@ -24,10 +24,12 @@ Recorded per horizon ``h`` (trading bars, not calendar days):
 - ``fwd_vol_h`` / ``mfe_vol_h`` / ``mae_vol_h`` — the same, normalised by a
   point-in-time close-to-close ATR (``fwd`` also by ``√h``) for cross-contract
   comparability.
-- ``mfe_h``  — maximum favourable excursion for a *long*: best move over
-  ``[t+1, t+h]`` measured from the entry. For a short, the adverse excursion is ``-mfe_h``.
-- ``mae_h``  — maximum adverse excursion for a *long* (``<= 0`` unless price only
-  rose): worst move over ``[t+1, t+h]`` from the entry. For a short, favourable is ``-mae_h``.
+- ``mfe_h``  — close-based maximum favourable excursion for a *long*: best future
+  close over ``[t+1, t+h]`` measured from the entry. For a short, the adverse
+  close excursion is ``-mfe_h``.
+- ``mae_h``  — close-based maximum adverse excursion for a *long* (``<= 0`` unless
+  every future close rose): worst future close over ``[t+1, t+h]`` from the entry.
+  For a short, favourable close excursion is ``-mae_h``.
 
 Plus, over the longest horizon, ``bars_to_mfe`` / ``bars_to_mae`` — how many bars
 it took to reach that best / worst point (a "time-to-target" primitive).

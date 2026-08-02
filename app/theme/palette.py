@@ -429,18 +429,6 @@ def inject_css() -> None:
             font-size: .92em; color: {TEXT};
         }}
 
-        /* Per-family reliability chip. */
-        .cw-rel {{
-            background: {SURFACE}; border: 1px solid {BORDER}; border-left: 4px solid {SUBTEXT};
-            border-radius: 12px; padding: 11px 15px; margin: 0 0 14px;
-        }}
-        .cw-rel .hd {{ font-size: 13.5px; color: {SUBTEXT}; margin-bottom: 3px; }}
-        .cw-rel .vl {{
-            font-size: 14px; color: {TEXT}; font-weight: 600;
-            font-variant-numeric: tabular-nums;
-        }}
-        .cw-rel .nt {{ font-size: 12.5px; color: {SUBTEXT}; margin-top: 4px; line-height: 1.5; }}
-
         /* Block intro panel — the block's explanation as a carded info note. */
         .cw-intro {{
             display: flex; gap: 13px; align-items: flex-start;
@@ -721,37 +709,6 @@ def caveat_note(html: str) -> None:
         <div class="cw-caveat">
             <div class="ico">&#9888;</div>
             <div class="txt">{html}</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-_BAND_TONE = {"modest": ACCENT, "weak": AMBER, "negligible": BEAR, "unmeasured": SUBTEXT}
-_BAND_LABEL = {
-    "modest": "Fiabilidad modesta",
-    "weak": "Fiabilidad baja",
-    "negligible": "Fiabilidad casi nula",
-    "unmeasured": "Sin medir",
-}
-
-
-def reliability_chip(family_label: str, rel) -> None:
-    """One chip stating a family's measured out-of-sample reliability.
-
-    ``rel`` is a :class:`crudewatch.scoring.reliability.FamilyReliability`. The
-    band word carries the meaning so the colour is never the only encoding.
-    """
-    tone = _BAND_TONE.get(rel.band, SUBTEXT)
-    label = _BAND_LABEL.get(rel.band, "Sin medir")
-    value = "—" if rel.sharpe is None else f"Sharpe OOS {rel.sharpe:.2f}"
-    weighting = "pesos ajustados" if rel.weighting == "fitted" else "pesos iguales"
-    st.markdown(
-        f"""
-        <div class="cw-rel" style="border-left-color:{tone}">
-            <div class="hd"><b style="color:{tone}">{label}</b> · {family_label}</div>
-            <div class="vl">{value} · {weighting}</div>
-            <div class="nt">{rel.note}</div>
         </div>
         """,
         unsafe_allow_html=True,

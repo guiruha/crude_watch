@@ -20,12 +20,22 @@ from core.scoring import (
     contracts_on_date,
     family_date_bounds,
 )
+from core.validation import validation_for
 
 _FAMILIES: tuple[str, ...] = tuple(FAMILY_LABELS)
 
 
 def _family_label(family: str) -> str:
     return FAMILY_LABELS.get(family, family.title())
+
+
+def _horizon_label(family: str):
+    def label(horizon: int) -> str:
+        validation = validation_for(family, int(horizon))
+        suffix = "OOS" if validation["state"] == "OOS" else "sin OOS"
+        return f"D+{int(horizon)} · {suffix}"
+
+    return label
 
 
 @dataclass(frozen=True)
@@ -92,6 +102,7 @@ def render_selection_bar() -> Selection:
                 "Horizonte (D+)",
                 HORIZONS,
                 key="sel_horizon",
+                format_func=_horizon_label(family),
                 help="Días de trading a los que se miden retornos, probabilidades y análogos.",
             )
 

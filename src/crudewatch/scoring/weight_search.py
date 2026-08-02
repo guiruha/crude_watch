@@ -1,7 +1,7 @@
 # src/crudewatch/scoring/weight_search.py
 """Search per-family Opportunity-Score weights that maximise backtest Sharpe.
 
-The 8 terms combined by ``compute_opportunity`` do not depend on the weights;
+The terms combined by ``compute_opportunity`` do not depend on the weights;
 only their linear combination does. So we precompute, once per contract and
 strictly point-in-time, the per-bar term values and regime sign, after which the
 score for any weight vector is a matrix-vector product. See
@@ -27,8 +27,8 @@ _REGIME_CODE = {"range": 0, "trend": 1, "transition": 2}
 
 _N_RANGE = len(RANGE_TERM_KEYS)
 _N_TREND = len(TREND_TERM_KEYS)
-_EQUAL_RANGE = np.array([0.25, 0.25, 0.25, 0.25] + [0.0] * (_N_RANGE - 4))
-_EQUAL_TREND = np.array([0.25, 0.25, 0.25, 0.25] + [0.0] * (_N_TREND - 4))
+_EQUAL_RANGE = np.full(_N_RANGE, 1.0 / _N_RANGE)
+_EQUAL_TREND = np.full(_N_TREND, 1.0 / _N_TREND)
 
 
 @dataclass(frozen=True)

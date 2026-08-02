@@ -18,11 +18,11 @@ from crudewatch.research.lifecycle import add_lifecycle
 from crudewatch.research.panel import add_level_panel
 from crudewatch.research.targets import add_forward_returns
 
-# Placeholder round-trip transaction cost in PRICE POINTS, per family.
-# TODO(fase-0): replace with measured bid/offer + slippage per family.
+# Round-trip transaction cost in PRICE POINTS, per family. These are explicit
+# conservative assumptions until measured bid/offer + slippage are available.
 COST_STUB_POINTS: dict[str, float] = {
     "outrights": 0.02,
-    "calendars": 0.01,
+    "calendars": 0.04,
     "cracks": 0.03,
     "brent_wti": 0.02,
     "quarterly": 0.01,

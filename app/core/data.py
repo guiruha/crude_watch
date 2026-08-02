@@ -27,6 +27,7 @@ RAW_PATH = _RESOURCE_ROOT / "data" / "raw_files.xlsx"
 # the writable cache dir (built on first launch and reused thereafter).
 _BAKED_PROCESSED = _RESOURCE_ROOT / "data" / "processed"
 PROCESSED_DIR = _CACHE_ROOT / "data" / "processed"
+ENRICHED_DIR = _CACHE_ROOT / "data" / "enriched"
 
 # Insertion order defines the structure picker order in the UI.
 FRAME_NAMES = [
@@ -35,7 +36,7 @@ FRAME_NAMES = [
 ]
 
 
-@st.cache_data(show_spinner="Building CrudeWatch dataset…")
+@st.cache_data(show_spinner="Building CrudeWatch dataset…", max_entries=1)
 def load_frames() -> dict[str, pd.DataFrame]:
     """Return every published dataframe, using the parquet cache when present.
 

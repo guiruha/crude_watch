@@ -15,6 +15,7 @@ dist/
 
 # Virtual environments
 .venv/
+.uv-cache/
 venv/
 env/
 
@@ -23,8 +24,13 @@ env/
 
 # Built datasets / caches
 data/processed/
+data/enriched/
 *.parquet
 docs/reports/bucket_sweep/
+release/
+
+# Local secrets
+.streamlit/secrets.toml
 
 # Test / tooling caches
 .pytest_cache/
@@ -35,7 +41,4 @@ docs/reports/bucket_sweep/
 .DS_Store
 Thumbs.db
 
-build/
-dist/
-*.parquet
 docs/reports/nonoverlap/
