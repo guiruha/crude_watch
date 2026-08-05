@@ -5,7 +5,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from core.data import load_frames
+from core.data import load_frame
 from core.scoring import active_contract_scores_cached
 from core.selection import Selection
 from screens.opportunity import _base_layout
@@ -29,7 +29,7 @@ def _latest_live(frame: pd.DataFrame, as_of: pd.Timestamp) -> pd.DataFrame:
 
 @st.cache_data(show_spinner=False, max_entries=512)
 def _latest_live_cached(family: str, as_of_iso: str) -> pd.DataFrame:
-    frame = load_frames().get(family)
+    frame = load_frame(family)
     if frame is None or frame.empty:
         return pd.DataFrame()
     return _latest_live(frame, pd.Timestamp(as_of_iso))
@@ -91,12 +91,10 @@ class CurveScreen:
     def display(self, selection: Selection) -> None:
         title_block(
             "Curva",
-            "Strip, calendario y liquidez en una sola pantalla para leer estructura antes que señal.",
+            "Strip y liquidez para leer estructura antes que señal.",
         )
         as_of = selection.as_of
         self._outright_strip(as_of)
-        self._calendar_matrix(selection)
-        self._fly_grid(selection)
 
     def _outright_strip(self, as_of: pd.Timestamp) -> None:
         st.markdown("### WTI strip")

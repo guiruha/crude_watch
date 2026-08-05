@@ -20,7 +20,7 @@ if _SRC.is_dir() and str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
 from core.auth import require_login, sidebar_account
-from core.data import enriched_cache_available, load_frame, load_frames
+from core.data import FRAME_NAMES, LazyFrames, enriched_cache_available, load_frame, load_frames
 from core.preload import start_preload
 from core.runtime import low_memory_mode
 from core.selection import render_selection_bar
@@ -75,13 +75,17 @@ def _nav_format(name: str) -> str:
 def _dataset_summary(frames: dict[str, pd.DataFrame]) -> dict[str, str]:
     """Compact stats for the sidebar status card."""
     outrights = frames.get("outrights")
-    contracts = sum(f["contract"].nunique() for f in frames.values() if "contract" in f)
+    contracts = (
+        sum(f["contract"].nunique() for f in frames.values() if "contract" in f)
+        if not low_memory_mode()
+        else sum(f["contract"].nunique() for f in frames.values() if "contract" in f)
+    )
     span = "—"
     if outrights is not None and not outrights.empty:
         dates = outrights["date"]
         span = f"{dates.min():%b %Y} \u2013 {dates.max():%b %Y}"
     return {
-        "Familias": str(len(frames)),
+        "Familias": str(len(FRAME_NAMES) if low_memory_mode() else len(frames)),
         "Contratos": f"{contracts:,}",
         "Cobertura": span,
     }
@@ -140,7 +144,7 @@ def main() -> None:
     require_login()
     if low_memory_mode():
         selection = render_selection_bar()
-        frames = {selection.family: load_frame(selection.family)}
+        frames = LazyFrames({selection.family: load_frame(selection.family)})
     else:
         frames = load_frames()
         selection = render_selection_bar()
@@ -151,13 +155,7 @@ def main() -> None:
         st.divider()
 
         nav_label("Navegación")
-        screen_names = (
-            ["Exploración", "PM"]
-            if low_memory_mode() and enriched_cache_available(selection.family)
-            else ["Exploración"]
-            if low_memory_mode()
-            else list(SCREENS)
-        )
+        screen_names = list(SCREENS) if not low_memory_mode() or enriched_cache_available(selection.family) else ["Exploración"]
         default_screen = "Exploración" if low_memory_mode() else "PM"
         choice = st.radio(
             "Pantalla",

@@ -36,6 +36,21 @@ FRAME_NAMES = [
 ]
 
 
+class LazyFrames(dict):
+    """Dict-like frame store that reads a family only when a screen asks for it."""
+
+    def __missing__(self, key: str) -> pd.DataFrame:
+        frame = load_frame(str(key))
+        self[str(key)] = frame
+        return frame
+
+    def get(self, key, default=None):
+        try:
+            return self[str(key)]
+        except KeyError:
+            return default
+
+
 @st.cache_data(show_spinner="Building CrudeWatch dataset…", max_entries=1)
 def load_frames() -> dict[str, pd.DataFrame]:
     """Return every published dataframe, using the parquet cache when present.
