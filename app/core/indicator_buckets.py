@@ -1,7 +1,7 @@
 """Per-indicator bucket outcomes for PM evidence."""
 from __future__ import annotations
 
-from itertools import combinations
+from itertools import combinations, product
 
 import numpy as np
 import pandas as pd
@@ -13,7 +13,7 @@ from crudewatch.scoring.score import FEATURE_SNAPSHOT
 from core.evidence import MIN_EFFECTIVE_N
 from core.scoring import HORIZONS, enriched_frame
 
-BUCKET_LABELS = ("muy bajo", "bajo", "medio", "alto", "muy alto")
+BUCKET_LABELS = ("bajo", "medio", "alto")
 
 INDICATOR_LABELS = {
     "z_10": "Z-score 10",
@@ -70,22 +70,15 @@ COMBINATION_INDICATORS = (
     "level_pct",
 )
 
-TRIPLE_COMBINATION_INDICATORS = (
-    "z_20",
-    "pctb_20_2",
-    "keltner_dist_20",
-    "rsi_2",
-    "rsi_14",
-    "rsi_div_14",
-    "macd_div",
-    "mom_decel_10",
-    "er_drop_20",
-    "slope_20",
-    "macd_hist",
-    "ema_align",
-    "er_20",
-    "vol_ratio",
-    "level_z",
+CORE_COMBINATION_THEMES: dict[str, tuple[str, ...]] = {
+    "regimen": ("er_20", "variance_ratio_5", "autocorr_20"),
+    "direccion": ("slope_20", "macd_hist", "ema_align", "mom_5", "mom_10", "mom_20"),
+    "fuerza": ("r2_20", "dir_persistence_20", "vol_ratio"),
+    "nivel": ("level_pct", "level_z", "z_10", "z_20", "z_50", "keltner_dist_20"),
+}
+
+CORE_COMBINATION_INDICATORS = tuple(
+    dict.fromkeys(name for names in CORE_COMBINATION_THEMES.values() for name in names)
 )
 
 
@@ -93,7 +86,7 @@ def _bucket_edges(values: np.ndarray) -> np.ndarray:
     finite = values[~np.isnan(values)]
     if len(finite) < MIN_EFFECTIVE_N:
         return np.array([], dtype=float)
-    return np.unique(np.nanpercentile(finite, [20, 40, 60, 80]))
+    return np.unique(np.nanpercentile(finite, [100 / 3, 200 / 3]))
 
 
 def _bucket_id(values: np.ndarray, edges: np.ndarray) -> np.ndarray:
@@ -176,6 +169,46 @@ def _bucket_snapshot(data: pd.DataFrame, current: pd.Series, indicators: list[st
             "finite": ~np.isnan(values),
         }
     return snapshot
+
+
+def _top_indicators_by_theme(
+    outcomes: pd.DataFrame,
+    available: set[str],
+    focus_horizon: int | None,
+    top_n: int = 3,
+) -> dict[str, tuple[str, ...]]:
+    """Pick the strongest current-bucket indicators inside each PM block."""
+    selected: dict[str, tuple[str, ...]] = {}
+    horizon = int(focus_horizon) if focus_horizon is not None else None
+    for theme, names in CORE_COMBINATION_THEMES.items():
+        candidates = [name for name in names if name in available]
+        if not candidates:
+            selected[theme] = ()
+            continue
+        ranked = outcomes[outcomes["indicator"].isin(candidates)].copy()
+        if horizon is not None and "horizon" in ranked.columns:
+            ranked = ranked[ranked["horizon"] == horizon].copy()
+        ranked = ranked[
+            (ranked["n"] >= MIN_EFFECTIVE_N) & ranked["sharpe_bucket"].notna()
+        ].copy()
+        if ranked.empty:
+            selected[theme] = tuple(candidates[:top_n])
+            continue
+        ranked["_abs_sharpe"] = ranked["sharpe_bucket"].abs()
+        picked = (
+            ranked.sort_values(["_abs_sharpe", "n"], ascending=[False, False])
+            ["indicator"]
+            .drop_duplicates()
+            .head(int(top_n))
+            .tolist()
+        )
+        for name in candidates:
+            if len(picked) >= top_n:
+                break
+            if name not in picked:
+                picked.append(name)
+        selected[theme] = tuple(picked)
+    return selected
 
 
 @st.cache_data(show_spinner=False, max_entries=1024)
@@ -327,7 +360,7 @@ def indicator_bucket_combinations_cached(
         return pd.DataFrame()
     current = sub.iloc[-1]
 
-    indicator_universe = TRIPLE_COMBINATION_INDICATORS if combo_size >= 3 else COMBINATION_INDICATORS
+    indicator_universe = CORE_COMBINATION_INDICATORS if combo_size >= 4 else COMBINATION_INDICATORS
     available = [name for name in indicator_universe if name in data.columns]
     snapshot = _bucket_snapshot(data, current, available)
     combo_size = int(combo_size)
@@ -369,7 +402,21 @@ def indicator_bucket_combinations_cached(
 
     rows: list[dict] = []
     combo_defs = []
-    for names in combinations(snapshot, combo_size):
+    if combo_size == 4:
+        outcomes = indicator_bucket_outcomes_cached(family, contract, as_of, horizons)
+        selected_by_theme = _top_indicators_by_theme(
+            outcomes,
+            set(snapshot),
+            focus_horizon,
+            top_n=3,
+        )
+        if any(not selected_by_theme.get(theme) for theme in CORE_COMBINATION_THEMES):
+            return pd.DataFrame()
+        raw_combos = product(*(selected_by_theme[theme] for theme in CORE_COMBINATION_THEMES))
+    else:
+        raw_combos = combinations(snapshot, combo_size)
+
+    for names in raw_combos:
         items = tuple(snapshot[name] for name in names)
         base_match = np.ones(len(data), dtype=bool)
         for item in items:
@@ -390,6 +437,7 @@ def indicator_bucket_combinations_cached(
         first = items[0]
         second = items[1]
         third = items[2] if len(items) > 2 else None
+        fourth = items[3] if len(items) > 3 else None
         target = f"fwd_{horizon}"
         mfe_col = f"mfe_{horizon}"
         mae_col = f"mae_{horizon}"
@@ -416,6 +464,10 @@ def indicator_bucket_combinations_cached(
             "third_label": third["label"] if third else "",
             "third_value": third["value"] if third else float("nan"),
             "third_bucket": third["bucket"] if third else "",
+            "fourth": names[3] if len(names) > 3 else "",
+            "fourth_label": fourth["label"] if fourth else "",
+            "fourth_value": fourth["value"] if fourth else float("nan"),
+            "fourth_bucket": fourth["bucket"] if fourth else "",
             "combo_label": " + ".join(labels),
             "combo_bucket": " + ".join(buckets),
             "horizon": horizon,

@@ -12,6 +12,7 @@ from core.scoring import (
     horizon_outcomes_cached,
     score_instrument_dict,
 )
+from core.runtime import low_memory_mode
 from core.validation import validation_for
 
 
@@ -31,21 +32,26 @@ def selected_context_cached(
     t0 = time.perf_counter()
     score = score_instrument_dict(family, contract, horizon, as_of)
     t_score = time.perf_counter()
-    active = active_contract_scores_cached(family, horizon, as_of)
-    rank_row = active.loc[active["contract"].astype(str) == str(contract)] if not active.empty else pd.DataFrame()
-    stretch_rank = float(rank_row["stretch_rank"].iloc[0]) if not rank_row.empty else float("nan")
+    if low_memory_mode():
+        rank_data = {}
+        stretch_rank = float("nan")
+    else:
+        active = active_contract_scores_cached(family, horizon, as_of)
+        rank_row = active.loc[active["contract"].astype(str) == str(contract)] if not active.empty else pd.DataFrame()
+        rank_data = rank_row.iloc[0].to_dict() if not rank_row.empty else {}
+        stretch_rank = float(rank_row["stretch_rank"].iloc[0]) if not rank_row.empty else float("nan")
     cohort = analogous_outcomes_cached(family, contract, horizon, as_of)
     t_cohort = time.perf_counter()
     horizons = (
         horizon_outcomes_cached(family, contract, as_of)
-        if include_horizons
+        if include_horizons and not low_memory_mode()
         else pd.DataFrame()
     )
     t_done = time.perf_counter()
     return {
         "score": score,
         "stretch_rank": stretch_rank,
-        "rank_row": rank_row.iloc[0].to_dict() if not rank_row.empty else {},
+        "rank_row": rank_data,
         "cohort": cohort,
         "validation": validation_for(family, horizon),
         "horizons": horizons,

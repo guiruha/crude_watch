@@ -26,6 +26,8 @@ env/
 data/processed/
 data/enriched/
 *.parquet
+!data/enriched/
+!data/enriched/*.parquet
 docs/reports/bucket_sweep/
 release/
 

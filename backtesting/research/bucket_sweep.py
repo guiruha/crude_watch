@@ -249,6 +249,17 @@ THEMES: dict[str, tuple[str, ...]] = {
     "volatility": ("vol_ratio",),
 }
 
+CORE_BLOCK_ORDER: tuple[str, ...] = ("regime", "direction", "strength", "level")
+CORE_BLOCK_THEMES: dict[str, tuple[str, ...]] = {
+    "regime": ("er_20", "variance_ratio_5", "autocorr_20"),
+    "direction": ("slope_20", "macd_hist", "ema_align", "mom_5", "mom_10", "mom_20"),
+    "strength": ("r2_20", "dir_persistence_20", "vol_ratio"),
+    "level": ("z_10", "z_20", "z_50", "keltner_dist_20"),
+}
+CORE_BLOCK_THEME: dict[str, str] = {
+    name: theme for theme, names in CORE_BLOCK_THEMES.items() for name in names
+}
+
 # Excluded from the sweep, not from the project. Bollinger %B expands to
 # (z + k) / 2k, an exact affine transform of the z-score over the same window,
 # so with rank-based quantile bucketing these produce byte-identical bucket
@@ -318,6 +329,46 @@ def count_theme_combinations(
     return sum(poly[1 : max_k + 1])
 
 
+def core_block_combinations(
+    indicators: Sequence[str],
+    top_n_per_theme: int = 3,
+    block_order: Sequence[str] = CORE_BLOCK_ORDER,
+    theme_sets: Mapping[str, Sequence[str]] = CORE_BLOCK_THEMES,
+) -> Iterator[tuple[str, ...]]:
+    """Yield exact one-per-core-block combinations.
+
+    Indicators are capped per block in the order supplied by ``theme_sets``.
+    This keeps the default offline search focused on the PM structure:
+    Régimen + Dirección + Fuerza + Nivel.
+    """
+    available = set(indicators)
+    grouped: list[tuple[str, ...]] = []
+    for theme in block_order:
+        names = tuple(name for name in theme_sets[theme] if name in available)
+        names = names[: max(int(top_n_per_theme), 0)]
+        if not names:
+            return
+        grouped.append(names)
+    yield from product(*grouped)
+
+
+def count_core_block_combinations(
+    indicators: Sequence[str],
+    top_n_per_theme: int = 3,
+    block_order: Sequence[str] = CORE_BLOCK_ORDER,
+    theme_sets: Mapping[str, Sequence[str]] = CORE_BLOCK_THEMES,
+) -> int:
+    total = 1
+    available = set(indicators)
+    for theme in block_order:
+        n = sum(1 for name in theme_sets[theme] if name in available)
+        n = min(n, max(int(top_n_per_theme), 0))
+        if n == 0:
+            return 0
+        total *= n
+    return total
+
+
 def sweep(
     codes: pd.DataFrame,
     forwards: pd.DataFrame,
@@ -325,6 +376,8 @@ def sweep(
     min_samples: int = 30,
     n_buckets: int = 3,
     theme_of: Mapping[str, str] = INDICATOR_THEME,
+    core_blocks: bool = False,
+    top_n_per_theme: int = 3,
     progress: Callable[[int, int], None] | None = None,
 ) -> pd.DataFrame:
     """Statistics for every joint bucket cell of every cross-theme combination.
@@ -342,11 +395,18 @@ def sweep(
     hits.columns = [f"hit_{h}" for h in horizons]
     data = pd.concat([forwards, hits], axis=1)
 
-    total = count_theme_combinations(names, max_k, theme_of)
+    if core_blocks:
+        combos = core_block_combinations(names, top_n_per_theme)
+        total = count_core_block_combinations(names, top_n_per_theme)
+        combo_theme = CORE_BLOCK_THEME
+    else:
+        combos = theme_combinations(names, max_k, theme_of)
+        total = count_theme_combinations(names, max_k, theme_of)
+        combo_theme = theme_of
     done = 0
     parts: list[pd.DataFrame] = []
 
-    for combo in theme_combinations(names, max_k, theme_of):
+    for combo in combos:
         k = len(combo)
         valid = (codes[list(combo)] != MISSING_CODE).all(axis=1)
         code = codes[combo[0]].astype(np.int32)
@@ -361,7 +421,7 @@ def sweep(
             continue
 
         stats["k"] = k
-        stats["themes"] = "|".join(theme_of[name] for name in combo)
+        stats["themes"] = "|".join(combo_theme[name] for name in combo)
         stats["indicators"] = "|".join(combo)
         stats["buckets"] = [decode_cell(int(c), k, n_buckets) for c in stats["cell"]]
         parts.append(stats.drop(columns="cell"))
@@ -391,6 +451,8 @@ def run_family(
     max_k: int = 4,
     min_samples: int = 30,
     min_history: int = 2000,
+    core_blocks: bool = False,
+    top_n_per_theme: int = 3,
     progress: Callable[[int, int], None] | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Full sweep for one contract family: features -> outcomes -> buckets -> cells.
@@ -443,7 +505,8 @@ def run_family(
 
     results = sweep(
         codes, panel[fwd_cols], max_k=max_k, min_samples=min_samples,
-        n_buckets=n_buckets, progress=progress,
+        n_buckets=n_buckets, core_blocks=core_blocks,
+        top_n_per_theme=top_n_per_theme, progress=progress,
     )
 
     results.insert(0, "family", family)

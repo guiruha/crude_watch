@@ -12,8 +12,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # App source + data.
 COPY . .
 
-# Bake the parquet cache so the container starts instantly (needs data/raw_files.xlsx).
-RUN python scripts/prebuild_cache.py
+# Bake the parquet caches so the container starts without runtime enrichment
+# spikes (needs data/raw_files.xlsx).
+RUN python scripts/prebuild_cache.py --enriched
 
 ENV PORT=8501 \
     STREAMLIT_SERVER_HEADLESS=true \

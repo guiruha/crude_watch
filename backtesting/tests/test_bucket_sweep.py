@@ -238,11 +238,14 @@ def test_decode_cell_maps_joint_code_to_labels():
 from crudewatch.research.features import FEATURE_NAMES
 
 from backtesting.research.bucket_sweep import (
+    CORE_BLOCK_THEME,
     EXCLUDED_INDICATORS,
     INDICATOR_THEME,
     SWEEP_INDICATORS,
     THEMES,
+    count_core_block_combinations,
     count_theme_combinations,
+    core_block_combinations,
     theme_combinations,
 )
 
@@ -277,6 +280,17 @@ def test_combination_count_matches_symmetric_polynomial():
     assert per_k == {1: 22, 2: 199, 3: 958, 4: 2644}
     assert sum(per_k.values()) == 3823
     assert count_theme_combinations(SWEEP_INDICATORS, max_k=4) == 3823
+
+
+def test_core_block_combinations_use_one_indicator_per_pm_block():
+    combos = list(core_block_combinations(SWEEP_INDICATORS, top_n_per_theme=3))
+
+    assert len(combos) == 81  # 3 regime x 3 direction x 3 strength x 3 level
+    assert count_core_block_combinations(SWEEP_INDICATORS, top_n_per_theme=3) == 81
+    for combo in combos:
+        themes = [CORE_BLOCK_THEME[name] for name in combo]
+        assert themes == ["regime", "direction", "strength", "level"]
+        assert len(combo) == 4
 
 
 def test_combinations_are_unordered_and_unique():

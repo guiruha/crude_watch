@@ -13,7 +13,7 @@ from crudewatch.infra import FAMILY_POINT_VALUE_USD
 from crudewatch.research import COST_STUB_POINTS, build_dataset
 
 from core.audit import descriptive_bias, pm_description
-from core.data import ENRICHED_DIR, load_frames
+from core.data import ENRICHED_DIR, load_frame
 from core.evidence import MIN_EFFECTIVE_N
 from core.validation import validation_for
 
@@ -100,11 +100,10 @@ __all__ = [
 @st.cache_data(show_spinner=False, max_entries=16)
 def enriched_frame(family: str) -> pd.DataFrame:
     """lifecycle -> features -> level panel -> executable forward outcomes."""
-    frames = load_frames()
     path = ENRICHED_DIR / f"{family}.parquet"
     if path.exists():
         return pd.read_parquet(path)
-    enriched = build_dataset(frames[family], family)
+    enriched = build_dataset(load_frame(family), family)
     try:
         ENRICHED_DIR.mkdir(parents=True, exist_ok=True)
         enriched.to_parquet(path)
