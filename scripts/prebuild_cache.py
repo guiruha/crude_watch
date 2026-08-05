@@ -13,6 +13,8 @@ import argparse
 import sys
 from pathlib import Path
 
+import pandas as pd
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
@@ -23,6 +25,16 @@ from crudewatch.research import build_dataset  # noqa: E402
 RAW = ROOT / "data" / "raw_files.xlsx"
 OUT = ROOT / "data" / "processed"
 ENRICHED_OUT = ROOT / "data" / "enriched"
+
+
+def _streamlit_cache_frame(frame):
+    """Shrink parquet/runtime footprint without changing app-facing columns."""
+    out = frame.copy()
+    for col in out.select_dtypes(include=["float64"]).columns:
+        out[col] = pd.to_numeric(out[col], downcast="float")
+    for col in out.select_dtypes(include=["int64"]).columns:
+        out[col] = pd.to_numeric(out[col], downcast="integer")
+    return out
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -47,7 +59,8 @@ def main(argv: list[str] | None = None) -> None:
         ENRICHED_OUT.mkdir(parents=True, exist_ok=True)
         for family, frame in frames.items():
             path = ENRICHED_OUT / f"{family}.parquet"
-            build_dataset(frame, family).to_parquet(path, index=False)
+            enriched = _streamlit_cache_frame(build_dataset(frame, family))
+            enriched.to_parquet(path, index=False, compression="zstd")
             print(f"  wrote {path}")
         print(f"Wrote {len(frames)} enriched frames to {ENRICHED_OUT}")
 

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 
 def _truthy(value: str | None) -> bool:
@@ -9,7 +10,7 @@ def _truthy(value: str | None) -> bool:
 
 
 def low_memory_mode() -> bool:
-    """True on Render/free-style deployments unless explicitly disabled."""
+    """True on Render/Streamlit-free-style deployments unless explicitly disabled."""
     if "CRUDEWATCH_LOW_MEMORY" in os.environ:
         return _truthy(os.environ.get("CRUDEWATCH_LOW_MEMORY"))
-    return _truthy(os.environ.get("RENDER"))
+    return _truthy(os.environ.get("RENDER")) or str(Path.cwd()).startswith("/mount/src")

@@ -20,7 +20,7 @@ if _SRC.is_dir() and str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
 from core.auth import require_login, sidebar_account
-from core.data import load_frame, load_frames
+from core.data import enriched_cache_available, load_frame, load_frames
 from core.preload import start_preload
 from core.runtime import low_memory_mode
 from core.selection import render_selection_bar
@@ -151,7 +151,13 @@ def main() -> None:
         st.divider()
 
         nav_label("Navegación")
-        screen_names = ["Exploración", "PM"] if low_memory_mode() else list(SCREENS)
+        screen_names = (
+            ["Exploración", "PM"]
+            if low_memory_mode() and enriched_cache_available(selection.family)
+            else ["Exploración"]
+            if low_memory_mode()
+            else list(SCREENS)
+        )
         default_screen = "Exploración" if low_memory_mode() else "PM"
         choice = st.radio(
             "Pantalla",

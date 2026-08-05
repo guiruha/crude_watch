@@ -73,3 +73,8 @@ def load_frame(family: str) -> pd.DataFrame:
     except OSError:
         pass
     return frames[family]
+
+
+def enriched_cache_available(family: str) -> bool:
+    """Whether a prebuilt enriched family cache exists for runtime scoring."""
+    return (ENRICHED_DIR / f"{family}.parquet").exists()
