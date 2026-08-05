@@ -54,3 +54,22 @@ def load_frames() -> dict[str, pd.DataFrame]:
     except OSError:
         pass  # read-only location; keep serving the in-memory frames
     return frames
+
+
+@st.cache_data(show_spinner="Loading CrudeWatch family…", max_entries=2)
+def load_frame(family: str) -> pd.DataFrame:
+    """Load one published family without materialising the whole dataset."""
+    family = str(family)
+    if family not in FRAME_NAMES:
+        raise KeyError(f"Unknown family: {family}")
+    for source in (_BAKED_PROCESSED, PROCESSED_DIR):
+        parquet = source / f"{family}.parquet"
+        if parquet.exists():
+            return pd.read_parquet(parquet)
+
+    frames = build_all(load_raw(RAW_PATH))
+    try:
+        save_frames(frames, PROCESSED_DIR, "parquet")
+    except OSError:
+        pass
+    return frames[family]

@@ -23,13 +23,13 @@ _spec.loader.exec_module(run_bucket_sweep)
 
 def test_validate_rejects_max_k_above_the_theme_count():
     """7 themes total, so --max-k 8 can never form a combination."""
-    args = run_bucket_sweep.parse_args(["--max-k", "8"])
+    args = run_bucket_sweep.parse_args(["--all-cross-theme", "--max-k", "8"])
     with pytest.raises(SystemExit, match="exceeds the 7 themes"):
         run_bucket_sweep.validate(args)
 
 
 def test_validate_rejects_max_k_above_4_without_force():
-    args = run_bucket_sweep.parse_args(["--max-k", "5"])
+    args = run_bucket_sweep.parse_args(["--all-cross-theme", "--max-k", "5"])
     with pytest.raises(SystemExit, match="--force"):
         run_bucket_sweep.validate(args)
 
@@ -42,7 +42,7 @@ def test_validate_allows_max_k_above_4_with_force(monkeypatch, tmp_path):
     dummy_raw.touch()
     monkeypatch.setattr(run_bucket_sweep, "RAW", dummy_raw)
 
-    args = run_bucket_sweep.parse_args(["--max-k", "5", "--force"])
+    args = run_bucket_sweep.parse_args(["--all-cross-theme", "--max-k", "5", "--force"])
     run_bucket_sweep.validate(args)  # must not raise
 
 

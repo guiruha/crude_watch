@@ -17,6 +17,7 @@ from core.indicator_buckets import (
     indicator_bucket_combinations_cached,
     indicator_bucket_outcomes_cached,
 )
+from core.runtime import low_memory_mode
 from core.scoring import HORIZONS
 from core.selection import Selection
 from screens.opportunity import _REGIME_ES, _base_layout
@@ -166,10 +167,12 @@ class PMScreen:
         st.markdown("\n".join(f"- {note}" for note in notes))
 
     def _top_bucket(self, selection: Selection) -> dict | None:
+        horizons = (int(selection.horizon),) if low_memory_mode() else HORIZONS
         buckets = indicator_bucket_outcomes_cached(
             selection.family,
             selection.contract,
             selection.as_of_iso,
+            horizons=horizons,
         )
         if buckets.empty:
             return None
@@ -184,37 +187,34 @@ class PMScreen:
         return selected.sort_values(["_abs_sharpe", "n"], ascending=[False, False]).iloc[0].to_dict()
 
     def _combined_bucket_combos(self, selection: Selection) -> pd.DataFrame:
-        horizons = (int(selection.horizon),) + tuple(
-            horizon for horizon in HORIZONS if int(horizon) != int(selection.horizon)
-        )
-        pairs = indicator_bucket_combinations_cached(
+        if low_memory_mode():
+            horizons = (int(selection.horizon),)
+            max_evolution_pairs = None
+        else:
+            horizons = (int(selection.horizon),) + tuple(
+                horizon for horizon in HORIZONS if int(horizon) != int(selection.horizon)
+            )
+            max_evolution_pairs = 16
+        combos = indicator_bucket_combinations_cached(
             selection.family,
             selection.contract,
             selection.as_of_iso,
             horizons=horizons,
             focus_horizon=int(selection.horizon),
-            max_evolution_pairs=16,
-            combo_size=2,
+            max_evolution_pairs=max_evolution_pairs,
+            combo_size=4,
         )
-        triples = indicator_bucket_combinations_cached(
-            selection.family,
-            selection.contract,
-            selection.as_of_iso,
-            horizons=horizons,
-            focus_horizon=int(selection.horizon),
-            max_evolution_pairs=10,
-            combo_size=3,
-        )
-        combos = pd.concat([pairs, triples], ignore_index=True)
         if not combos.empty:
-            combos["combo_type"] = combos["combo_size"].map({2: "Par", 3: "Trío"}).fillna("Combo")
+            combos["combo_type"] = combos["combo_size"].map({4: "4 bloques"}).fillna("Combo")
         return combos
 
     def _bucket_direction_read(self, selection: Selection) -> dict:
+        horizons = (int(selection.horizon),) if low_memory_mode() else HORIZONS
         buckets = indicator_bucket_outcomes_cached(
             selection.family,
             selection.contract,
             selection.as_of_iso,
+            horizons=horizons,
         )
         combos = self._combined_bucket_combos(selection)
         rows: list[dict] = []
@@ -413,10 +413,12 @@ class PMScreen:
             )
 
     def _directional_signal_panel(self, selection: Selection) -> pd.DataFrame:
+        horizons = (int(selection.horizon),) if low_memory_mode() else HORIZONS
         buckets = indicator_bucket_outcomes_cached(
             selection.family,
             selection.contract,
             selection.as_of_iso,
+            horizons=horizons,
         )
         combos = self._combined_bucket_combos(selection)
         rows: list[dict] = []
@@ -569,10 +571,12 @@ class PMScreen:
         st.dataframe(pd.DataFrame(rows), width=1600, hide_index=True)
 
     def _indicator_buckets(self, selection: Selection) -> None:
+        horizons = (int(selection.horizon),) if low_memory_mode() else HORIZONS
         buckets = indicator_bucket_outcomes_cached(
             selection.family,
             selection.contract,
             selection.as_of_iso,
+            horizons=horizons,
         )
         if buckets.empty:
             return
@@ -735,9 +739,9 @@ class PMScreen:
             return
         st.markdown("#### Combinaciones de buckets")
         st.caption(
-            "Cruza pares y tríos de indicadores en su bucket actual. Responde: cuando estos estados "
+            "Cruza una señal de Régimen, una de Dirección, una de Fuerza y una de Nivel, "
+            "tomando hasta tres candidatas por bloque. Responde: cuando estos estados "
             "aparecieron juntos, qué pasó a D+X. Se ocultan Sharpe/mediana si n efectivo < 15; "
-            "los tríos reducen mucho la muestra, así que pesan menos si no son consistentes. "
             "Mediana y Sharpe pueden discrepar si la cola adversa domina la media neta."
         )
         selected = combos[combos["horizon"] == int(selection.horizon)].copy()
@@ -1286,10 +1290,12 @@ class PMScreen:
 
     def _signal_window_candidates(self, selection: Selection) -> list[dict]:
         candidates: list[dict] = []
+        horizons = (int(selection.horizon),) if low_memory_mode() else HORIZONS
         buckets = indicator_bucket_outcomes_cached(
             selection.family,
             selection.contract,
             selection.as_of_iso,
+            horizons=horizons,
         )
         if not buckets.empty:
             current = buckets[

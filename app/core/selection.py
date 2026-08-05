@@ -14,6 +14,8 @@ import streamlit as st
 
 from crudewatch.infra import FAMILY_LABELS
 
+from core.data import load_frame
+from core.runtime import low_memory_mode
 from core.scoring import (
     HEADLINE_HORIZON,
     HORIZONS,
@@ -36,6 +38,38 @@ def _horizon_label(family: str):
         return f"D+{int(horizon)} · {suffix}"
 
     return label
+
+
+def _family_date_bounds_light(family: str) -> tuple[pd.Timestamp, pd.Timestamp]:
+    frame = load_frame(family)
+    if frame is None or frame.empty:
+        today = pd.Timestamp.today().normalize()
+        return today, today
+    dates = pd.to_datetime(frame["date"])
+    return pd.Timestamp(dates.min()), pd.Timestamp(dates.max())
+
+
+def _contracts_on_date_light(family: str, as_of: str) -> list[str]:
+    frame = load_frame(family)
+    if frame is None or frame.empty or "contract" not in frame:
+        return []
+    stamp = pd.Timestamp(as_of)
+    dates = pd.to_datetime(frame["date"])
+    grp = frame.assign(_d=dates).groupby("contract")["_d"]
+    spans = pd.DataFrame({"min": grp.min(), "max": grp.max()})
+    live = spans[(spans["min"] <= stamp) & (spans["max"] >= stamp)]
+    if live.empty:
+        return []
+    current = (
+        frame.loc[frame["contract"].isin(live.index) & (dates <= stamp)]
+        .sort_values(["contract", "date"])
+        .groupby("contract", sort=False)
+        .tail(1)
+    )
+    if "dte" in current.columns:
+        current = current.sort_values(["dte", "contract"], ascending=[True, True])
+        return current["contract"].astype(str).tolist()
+    return sorted(live.index.astype(str).tolist())
 
 
 @dataclass(frozen=True)
@@ -72,7 +106,10 @@ def render_selection_bar() -> Selection:
                 "Familia", _FAMILIES, format_func=_family_label, key="sel_family"
             )
 
-        min_date, max_date = family_date_bounds(family)
+        if low_memory_mode():
+            min_date, max_date = _family_date_bounds_light(family)
+        else:
+            min_date, max_date = family_date_bounds(family)
         lo, hi = min_date.date(), max_date.date()
         if "sel_date" not in st.session_state or not (lo <= st.session_state["sel_date"] <= hi):
             st.session_state["sel_date"] = hi
@@ -80,7 +117,11 @@ def render_selection_bar() -> Selection:
             as_of = st.date_input("Fecha", min_value=lo, max_value=hi, key="sel_date")
         as_of_iso = pd.Timestamp(as_of).strftime("%Y-%m-%d")
 
-        contracts = contracts_on_date(family, as_of_iso)
+        contracts = (
+            _contracts_on_date_light(family, as_of_iso)
+            if low_memory_mode()
+            else contracts_on_date(family, as_of_iso)
+        )
         with c_contract:
             if contracts:
                 if st.session_state.get("sel_contract") not in contracts:

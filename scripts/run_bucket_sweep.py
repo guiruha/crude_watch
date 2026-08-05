@@ -4,12 +4,12 @@
     uv run python scripts/run_bucket_sweep.py --families quarterly flies --max-k 2
     uv run python scripts/run_bucket_sweep.py --jobs 4 --resume
 
-For each contract family: bucket all 24 indicators into terciles whose cutoffs
-are expanding quantiles over *strictly prior dates* (no look-ahead), form every
-cross-theme combination of up to --max-k indicators (at most one indicator per
-theme, so near-duplicates like z_20 with z_50 are never paired), and report the
-distribution of forward price differences (close[t+h] - open[t+1]) inside each
-joint bucket cell, for h in 1, 2, 3, 5, 10, 15, 20.
+For each contract family: bucket indicators into terciles whose cutoffs are
+expanding quantiles over *strictly prior dates* (no look-ahead), form every
+four-block combination with one indicator from Régimen, Dirección, Fuerza and
+Nivel (up to three indicators per block), and report the distribution of forward
+price differences (close[t+h] - open[t+1]) inside each joint bucket cell, for
+h in 1, 2, 3, 5, 10, 15, 20.
 
 Writes, per family, to docs/reports/bucket_sweep/:
 
@@ -45,9 +45,11 @@ from crudewatch.data_preparation import build_all  # noqa: E402
 from crudewatch.infra import load_raw  # noqa: E402
 from backtesting.research.bucket_sweep import (  # noqa: E402
     HORIZONS,
+    CORE_BLOCK_ORDER,
     SWEEP_INDICATORS,
     THEMES,
     InsufficientData,
+    count_core_block_combinations,
     count_theme_combinations,
     run_family,
 )
@@ -64,6 +66,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--families", nargs="+", default=FRAME_NAMES, choices=FRAME_NAMES)
     p.add_argument("--max-k", type=int, default=4, help="combination depth (default 4)")
+    p.add_argument("--top-per-block", type=int, default=3,
+                   help="core-block indicators retained per block (default 3)")
+    p.add_argument("--all-cross-theme", action="store_true",
+                   help="use the older exhaustive 1..max-k cross-theme sweep")
     p.add_argument("--horizons", nargs="+", type=int, default=list(HORIZONS))
     p.add_argument("--n-buckets", type=int, default=3,
                    help="buckets per indicator (terciles only -- 3 is the only "
@@ -89,13 +95,15 @@ def validate(args: argparse.Namespace) -> None:
         )
     if args.max_k < 1:
         raise SystemExit("--max-k must be at least 1")
-    if args.max_k > len(THEMES):
+    if args.top_per_block < 1:
+        raise SystemExit("--top-per-block must be at least 1")
+    if args.all_cross_theme and args.max_k > len(THEMES):
         raise SystemExit(
             f"--max-k {args.max_k} exceeds the {len(THEMES)} themes. A combination "
             f"holds at most one indicator per theme, so no combination can be "
             f"larger than {len(THEMES)}."
         )
-    if args.max_k > 4 and not args.force:
+    if args.all_cross_theme and args.max_k > 4 and not args.force:
         cells = 0
         for k in range(1, args.max_k + 1):
             n_k = (count_theme_combinations(SWEEP_INDICATORS, k)
@@ -120,6 +128,8 @@ def sweep_one(family: str, frame: pd.DataFrame, args: argparse.Namespace, progre
             max_k=args.max_k,
             min_samples=args.min_samples,
             min_history=args.min_history,
+            core_blocks=not args.all_cross_theme,
+            top_n_per_theme=args.top_per_block,
             progress=progress,
         )
     except InsufficientData as exc:
@@ -196,6 +206,16 @@ def main(argv: list[str] | None = None) -> None:
 
     print(f"Loading raw workbook: {RAW}")
     frames = build_all(load_raw(RAW))
+    if args.all_cross_theme:
+        total = count_theme_combinations(SWEEP_INDICATORS, args.max_k)
+        print(f"Mode: exhaustive cross-theme, {total:,} indicator combinations per family")
+    else:
+        total = count_core_block_combinations(SWEEP_INDICATORS, args.top_per_block)
+        blocks = " + ".join(CORE_BLOCK_ORDER)
+        print(
+            f"Mode: core 4-block ({blocks}), up to {args.top_per_block} per block, "
+            f"{total:,} indicator combinations per family"
+        )
 
     started = time.time()
 

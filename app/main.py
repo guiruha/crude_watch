@@ -20,8 +20,9 @@ if _SRC.is_dir() and str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
 from core.auth import require_login, sidebar_account
-from core.data import load_frames
+from core.data import load_frame, load_frames
 from core.preload import start_preload
+from core.runtime import low_memory_mode
 from core.selection import render_selection_bar
 from core.self_assessment import self_assessment_status, start_self_assessment
 from screens.component import ComponentScreen
@@ -119,29 +120,45 @@ if hasattr(st, "fragment"):
 
     @st.fragment(run_every="10s")
     def _self_assessment_card(family: str, horizon: int) -> None:
+        if low_memory_mode():
+            sidebar_card({"Estado": "desactivada", "Modo": "memoria baja"})
+            return
         start_self_assessment(family, horizon)
         sidebar_card(_assessment_summary(self_assessment_status(family, horizon)))
 
 else:
 
     def _self_assessment_card(family: str, horizon: int) -> None:
+        if low_memory_mode():
+            sidebar_card({"Estado": "desactivada", "Modo": "memoria baja"})
+            return
         start_self_assessment(family, horizon)
         sidebar_card(_assessment_summary(self_assessment_status(family, horizon)))
 
 
 def main() -> None:
     require_login()
-    frames = load_frames()
-    selection = render_selection_bar()
-    start_preload(selection, list(frames))
+    if low_memory_mode():
+        selection = render_selection_bar()
+        frames = {selection.family: load_frame(selection.family)}
+    else:
+        frames = load_frames()
+        selection = render_selection_bar()
+        start_preload(selection, list(frames))
 
     with st.sidebar:
         sidebar_brand()
         st.divider()
 
         nav_label("Navegación")
+        screen_names = ["Exploración"] if low_memory_mode() else list(SCREENS)
+        default_screen = "Exploración" if low_memory_mode() else "PM"
         choice = st.radio(
-            "Pantalla", list(SCREENS), format_func=_nav_format, label_visibility="collapsed"
+            "Pantalla",
+            screen_names,
+            index=screen_names.index(default_screen),
+            format_func=_nav_format,
+            label_visibility="collapsed",
         )
 
         st.divider()
