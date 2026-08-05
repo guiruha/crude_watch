@@ -151,7 +151,7 @@ def main() -> None:
         st.divider()
 
         nav_label("Navegación")
-        screen_names = ["Exploración"] if low_memory_mode() else list(SCREENS)
+        screen_names = ["Exploración", "PM"] if low_memory_mode() else list(SCREENS)
         default_screen = "Exploración" if low_memory_mode() else "PM"
         choice = st.radio(
             "Pantalla",
