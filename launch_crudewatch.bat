@@ -9,6 +9,16 @@ if exist ".venv\Scripts\python.exe" (
     goto :done
 )
 
+where py >nul 2>nul
+if %errorlevel% equ 0 (
+    py -3 --version >nul 2>nul
+    if %errorlevel% equ 0 (
+        echo Launching CrudeWatch with Python launcher...
+        py -3 run_app.py
+        goto :done
+    )
+)
+
 where uv >nul 2>nul
 if %errorlevel% equ 0 (
     echo Launching CrudeWatch with uv...
@@ -16,22 +26,20 @@ if %errorlevel% equ 0 (
     goto :done
 )
 
-where py >nul 2>nul
-if %errorlevel% equ 0 (
-    echo Launching CrudeWatch with Python launcher...
-    py -3 run_app.py
-    goto :done
-)
-
 where python >nul 2>nul
 if %errorlevel% equ 0 (
-    echo Launching CrudeWatch with python...
-    python run_app.py
-    goto :done
+    python --version >nul 2>nul
+    if %errorlevel% equ 0 (
+        echo Launching CrudeWatch with python...
+        python run_app.py
+        goto :done
+    )
 )
 
 echo Python was not found.
-echo Install Python 3.10 or newer, or install uv, then run this file again.
+echo Install Python 3.10 or newer from https://www.python.org/downloads/windows/
+echo During install, enable "Add python.exe to PATH".
+echo If Windows opens the Microsoft Store, disable the python.exe App execution alias.
 pause
 exit /b 1
 
