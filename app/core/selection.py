@@ -34,8 +34,8 @@ def _family_label(family: str) -> str:
 def _horizon_label(family: str):
     def label(horizon: int) -> str:
         validation = validation_for(family, int(horizon))
-        suffix = "OOS" if validation["state"] == "OOS" else "sin OOS"
-        return f"D+{int(horizon)} · {suffix}"
+        suffix = " · OOS" if validation["state"] == "OOS" else ""
+        return f"D+{int(horizon)}{suffix}"
 
     return label
 
