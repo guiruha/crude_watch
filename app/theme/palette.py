@@ -200,9 +200,23 @@ def inject_css() -> None:
         section[data-testid="stSidebar"] div[role="radiogroup"] > label:hover {{
             background: {SURFACE_2}; border-color: {BORDER};
         }}
-        /* hide the actual radio dot */
+        /* Hide the native Streamlit radio control; the label row is the nav UI. */
         section[data-testid="stSidebar"] div[role="radiogroup"] > label > div:first-child {{
-            display: none;
+            display: none !important;
+        }}
+        section[data-testid="stSidebar"] div[role="radiogroup"] input[type="radio"] {{
+            opacity: 0 !important;
+            position: absolute !important;
+            pointer-events: none !important;
+            width: 0 !important;
+            height: 0 !important;
+            margin: 0 !important;
+        }}
+        section[data-testid="stSidebar"] div[role="radiogroup"] input[type="radio"] + div {{
+            display: none !important;
+        }}
+        section[data-testid="stSidebar"] div[role="radiogroup"] div:has(> input[type="radio"]) {{
+            display: none !important;
         }}
         section[data-testid="stSidebar"] div[role="radiogroup"] > label p {{
             font-size: 20px; font-weight: 600; color: {TEXT};
